@@ -469,9 +469,10 @@ export default function PortfolioTab() {
             <TabsContent value="6m"></TabsContent>
             <TabsContent value="1y"></TabsContent>
             <TabsContent value="all"></TabsContent>
-          </CardContent>
-        </Card>
-      </div>
-    );
+          </Tabs>
+        </CardContent>
+      </Card>
+    </div>
+  );
 }
 
