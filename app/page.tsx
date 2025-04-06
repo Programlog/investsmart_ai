@@ -22,8 +22,8 @@ export default function Home() {
               </Button>
             </SignedOut>
             <SignedOut>
-                <Button asChild className="bg-white">
-                  <Link href="/sign-up" className="text-black">
+              <Button asChild variant="outline">
+                  <Link href="/sign-up">
                     Sign Up
                   </Link>
                 </Button>
