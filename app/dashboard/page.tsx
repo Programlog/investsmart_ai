@@ -6,15 +6,21 @@ import MarketTab from "@/components/dashboard/market-tab"
 import AssistantTab from "@/components/dashboard/assistant-tab"
 import LearningTab from "@/components/dashboard/learning-tab"
 import NewsTab from "@/components/dashboard/news-tab"
+import { currentUser } from "@clerk/nextjs/server"
 
-export default function DashboardPage() {
+export default async function DashboardPage() {
+  const user = await currentUser()
+  const userName = user?.firstName
+
+  const welcomePrefix = userName ? `${userName}'s` : 'Your'
+
   return (
     <div className="flex flex-col min-h-screen">
       <DashboardHeader />
       <main className="flex-1 container py-8">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">Your Investment Dashboard</h1>
+            <h1 className="text-3xl font-bold tracking-tight">{welcomePrefix} Investment Dashboard</h1>
             <p className="text-muted-foreground mt-1">View your personalized investment profile and recommendations</p>
           </div>
         </div>

@@ -1,7 +1,8 @@
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { ArrowRight, BarChart3, MessageSquare, ShieldCheck } from "lucide-react"
+import { ArrowRight, BarChart3, MessageSquare, ShieldCheck, User } from "lucide-react"
+import { SignInButton, SignUpButton, SignedOut, SignedIn, UserButton } from "@clerk/nextjs"
 
 export default function Home() {
   return (
@@ -13,12 +14,26 @@ export default function Home() {
             <span>InvestSmart AI</span>
           </div>
           <nav className="flex items-center gap-4">
-            <Link href="/login" className="text-sm font-medium hover:underline">
-              Login
-            </Link>
-            <Button asChild>
-              <Link href="/register">Get Started</Link>
-            </Button>
+            <SignedOut>
+              <Button asChild>
+                <Link href="/sign-in">
+                  Sign In
+                </Link>
+              </Button>
+            </SignedOut>
+            <SignedOut>
+                <Button asChild className="bg-white">
+                  <Link href="/sign-up" className="text-black">
+                    Sign Up
+                  </Link>
+                </Button>
+              </SignedOut>
+            <SignedIn>
+              <Link href="/dashboard" className="text-sm text-muted-foreground hover:underline">
+                Dashboard
+              </Link>
+              <UserButton showName/>
+            </SignedIn>
           </nav>
         </div>
       </header>
@@ -37,11 +52,13 @@ export default function Home() {
                   </p>
                 </div>
                 <div className="flex flex-col gap-2 min-[400px]:flex-row">
-                  <Button asChild size="lg">
-                    <Link href="/questionnaire">
-                      Start Your Journey <ArrowRight className="ml-2 h-4 w-4" />
-                    </Link>
-                  </Button>
+                  <SignedOut>
+                    <Button asChild size="lg">
+                      <Link href="/questionnaire">
+                        Start Your Journey <ArrowRight className="ml-2 h-4 w-4" />
+                      </Link>
+                    </Button>
+                  </SignedOut>
                   <Button variant="outline" size="lg" asChild>
                     <Link href="/about">Learn More</Link>
                   </Button>

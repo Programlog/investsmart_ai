@@ -10,6 +10,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { UserButton } from "@clerk/nextjs"
+
 
 export default function DashboardHeader() {
   return (
@@ -19,7 +21,8 @@ export default function DashboardHeader() {
           <BarChart3 className="h-6 w-6 text-primary" />
           <span>InvestSmart AI</span>
         </Link>
-        <nav className="flex items-center gap-4">
+        <UserButton showName/>
+        {/* <nav className="flex items-center gap-4">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="relative h-8 w-8 rounded-full">
@@ -52,7 +55,7 @@ export default function DashboardHeader() {
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
-        </nav>
+        </nav> */}
       </div>
     </header>
   )
