@@ -1,0 +1,89 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id              String    @id @default(uuid())
+  clerkUserId     String    @unique
+  email           String    @unique
+  firstName       String
+  lastName        String
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @default(now()) @map("updated_at")
+  profiles        Profile[]
+  portfolio       Portfolio[]
+  chatHistory     ChatHistory[]
+  curriculum      CurriculumProgress[]
+  responses       Response[]
+  recommendations Recommendation[]
+}
+
+model Profile {
+  id            String   @id @default(uuid())
+  userId        String   @map("user_id")
+  riskTolerance String   // Enum: low, medium, high
+  goals         String?
+  experience    String   // Enum: none, beginner, intermediate, advanced
+  incomeRange   String?  @map("income_range")
+  horizon       String
+  createdAt     DateTime @default(now()) @map("created_at")
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Response {
+  id         String   @id @default(uuid())
+  userId     String   @map("user_id")
+  questionId String   @map("question_id")
+  answer     String
+  timestamp  DateTime @default(now())
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Recommendation {
+  id          String   @id @default(uuid())
+  userId      String   @map("user_id")
+  allocation  Json
+  explanation String
+  generatedAt DateTime @default(now()) @map("generated_at")
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Portfolio {
+  id            String   @id @default(uuid())
+  userId        String   @map("user_id")
+  symbol        String
+  name          String
+  quantity      Decimal
+  purchasePrice Decimal? @map("purchase_price")
+  addedAt       DateTime @default(now()) @map("added_at")
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model ChatHistory {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  message   String
+  response  String
+  timestamp DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model CurriculumProgress {
+  id          String    @id @default(uuid())
+  userId      String    @map("user_id")
+  articleId   String    @map("article_id")
+  status      String    @default("unstarted") // Enum: unstarted, in_progress, completed
+  completedAt DateTime? @map("completed_at")
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
