@@ -10,7 +10,6 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Send, RefreshCw, Sparkles } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { generateText } from "@/lib/ai-service"
 
 type Message = {
   id: string
@@ -53,7 +52,7 @@ export default function AssistantTab() {
     }
 
     const assistantMessage: Message = {
-      id: `ai_${Date.now()}`,
+      id: `ai-${Date.now()}`,
       content: "",
       role: "assistant", 
       timestamp: new Date(),
@@ -65,29 +64,47 @@ export default function AssistantTab() {
     setError(null)
 
     try {
-      await generateText(input, (chunk) => {
-        setMessages((prev) => 
-          prev.map(msg => 
-            msg.id === assistantMessage.id
-              ? {...msg, content: msg.content + chunk}
-              : msg
-          )
-        );
+      // await generateText(input, (chunk) => {
+      //   setMessages((prev) => 
+      //     prev.map(msg => 
+      //       msg.id === assistantMessage.id
+      //         ? {...msg, content: msg.content + chunk}
+      //         : msg
+      //     )
+      //   );
+      // });
+
+      const response = await fetch('/api/ai', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ prompt: input })
       });
-  
-  
 
-      // const assistantMessage: Message = {
-      //   id: (Date.now() + 1).toString(),
-      //   content: response,
-      //   role: "assistant",
-      //   timestamp: new Date(),
-      // }
+      if (!response.ok) throw new Error('API request failed');
 
-      // setMessages((prev) => [...prev, assistantMessage])
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder();
+      let done = false;
+
+      while (!done && reader) {
+        const { value, done: readDone } = await reader.read();
+        done = readDone;
+        const chunk = decoder.decode(value);
+        
+        setMessages(prev => {
+          const last = prev[prev.length - 1];
+          if (last.id.startsWith(`ai-`)) {
+            return [...prev.slice(0, -1), {
+              ...last,
+              content: last.content + chunk
+            }];
+          }
+          return prev;
+        });
+      }
+
     } catch (error) {
       console.error('Chat error:', error)
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error'
       setError(error instanceof Error ? error : new Error("Unknown Error"))
 
       setMessages((prev) =>

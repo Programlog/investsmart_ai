@@ -1,6 +1,7 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
+"use server";
+import { GoogleGenerativeAI, DynamicRetrievalMode } from "@google/generative-ai";
 
-const geminiApiKey = "ADD YOUR KEY HERE";
+const geminiApiKey = process.env.GEMINI_API_KEY;
 
 if (!geminiApiKey) {
   throw new Error("GEMINI_API_KEY environment variable is not set.");
@@ -12,14 +13,14 @@ const systemInstruction = `You are a helpful AI chatbot specialized in finance a
   Keep your responses concise and helpful within the scope of finance and basic greetings/farewells. Important: keep your responses under 100 words. Responses should be in plain text, emojis are acceptable.`
 
 const genAI = new GoogleGenerativeAI(geminiApiKey);
-const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-lite-001", systemInstruction: systemInstruction }); 
-
+const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash", systemInstruction: systemInstruction, })
 const chat = model.startChat({
   history: [],
   generationConfig: {
-    temperature: 0.7,
+    temperature: 0.0,
     maxOutputTokens: 200,
   },
+  tools: [{google_search: { } }]
 });
 
 let isAwaitingResponse = true;
@@ -88,45 +89,45 @@ export async function generateInvestmentProfile(answers: Record<string, string>)
 }
 
 // Mock function to simulate AI assistant responses
-export async function askAiAssistant(question: string) {
-  try {
-    // In a real app, this would use the AI SDK to generate a response
-    // For demo purposes, we'll use a simple implementation
+// export async function askAiAssistant(question: string) {
+//   try {
+//     // In a real app, this would use the AI SDK to generate a response
+//     // For demo purposes, we'll use a simple implementation
 
-    // This is a simulation - in a real app, we would use the AI SDK
-    /*
-    const { text } = await generateText({
-      model: openai("gpt-4o"),
-      prompt: question,
-      system: "You are an AI investment assistant helping a user with their investment questions. Provide helpful, accurate, and concise responses."
-    });
-    return text;
-    */
+//     // This is a simulation - in a real app, we would use the AI SDK
+//     /*
+//     const { text } = await generateText({
+//       model: openai("gpt-4o"),
+//       prompt: question,
+//       system: "You are an AI investment assistant helping a user with their investment questions. Provide helpful, accurate, and concise responses."
+//     });
+//     return text;
+//     */
 
-    // Simulate API delay
-    await new Promise((resolve) => setTimeout(resolve, 1000))
+//     // Simulate API delay
+//     await new Promise((resolve) => setTimeout(resolve, 1000))
 
-    // Simple response logic for demo purposes
-    if (question.toLowerCase().includes("etf")) {
-      return "ETFs (Exchange-Traded Funds) are investment funds traded on stock exchanges. They hold assets like stocks, bonds, or commodities and typically track an index. ETFs offer diversification, low expense ratios, and tax efficiency, making them popular for both beginners and experienced investors."
-    } else if (question.toLowerCase().includes("risk")) {
-      return "Investment risk refers to the possibility of losing money or not meeting financial goals. Different investments carry different levels of risk - generally, higher potential returns come with higher risk. Diversification across asset classes can help manage risk in your portfolio."
-    } else if (question.toLowerCase().includes("bond")) {
-      return "Bonds are debt securities where you lend money to an issuer (like a government or corporation) in exchange for periodic interest payments and the return of the bond's face value when it matures. They're generally considered lower risk than stocks but offer lower potential returns."
-    } else if (question.toLowerCase().includes("stock")) {
-      return "Stocks represent ownership in a company. When you buy a stock, you're purchasing a share of the company's assets and earnings. Stocks offer growth potential through price appreciation and dividends, but they typically come with higher volatility than bonds."
-    } else if (question.toLowerCase().includes("diversif")) {
-      return "Diversification is a risk management strategy that involves spreading your investments across various asset classes, industries, and geographic regions. The goal is to reduce exposure to any single investment's risk and smooth out returns over time. A well-diversified portfolio might include stocks, bonds, real estate, and perhaps alternative investments."
-    } else if (question.toLowerCase().includes("portfolio")) {
-      return "Your investment portfolio should align with your financial goals, risk tolerance, and time horizon. Based on your profile, a balanced approach with a mix of stocks for growth and bonds for stability appears appropriate. Consider regular rebalancing to maintain your target allocation as market values change."
-    } else {
-      return "That's a great question about investing. As you continue your investment journey, remember that diversification, long-term thinking, and aligning your investments with your goals and risk tolerance are key principles for success. Would you like more specific information about any particular investment topic?"
-    }
-  } catch (error) {
-    console.error("Error getting AI response:", error)
-    throw error
-  }
-}
+//     // Simple response logic for demo purposes
+//     if (question.toLowerCase().includes("etf")) {
+//       return "ETFs (Exchange-Traded Funds) are investment funds traded on stock exchanges. They hold assets like stocks, bonds, or commodities and typically track an index. ETFs offer diversification, low expense ratios, and tax efficiency, making them popular for both beginners and experienced investors."
+//     } else if (question.toLowerCase().includes("risk")) {
+//       return "Investment risk refers to the possibility of losing money or not meeting financial goals. Different investments carry different levels of risk - generally, higher potential returns come with higher risk. Diversification across asset classes can help manage risk in your portfolio."
+//     } else if (question.toLowerCase().includes("bond")) {
+//       return "Bonds are debt securities where you lend money to an issuer (like a government or corporation) in exchange for periodic interest payments and the return of the bond's face value when it matures. They're generally considered lower risk than stocks but offer lower potential returns."
+//     } else if (question.toLowerCase().includes("stock")) {
+//       return "Stocks represent ownership in a company. When you buy a stock, you're purchasing a share of the company's assets and earnings. Stocks offer growth potential through price appreciation and dividends, but they typically come with higher volatility than bonds."
+//     } else if (question.toLowerCase().includes("diversif")) {
+//       return "Diversification is a risk management strategy that involves spreading your investments across various asset classes, industries, and geographic regions. The goal is to reduce exposure to any single investment's risk and smooth out returns over time. A well-diversified portfolio might include stocks, bonds, real estate, and perhaps alternative investments."
+//     } else if (question.toLowerCase().includes("portfolio")) {
+//       return "Your investment portfolio should align with your financial goals, risk tolerance, and time horizon. Based on your profile, a balanced approach with a mix of stocks for growth and bonds for stability appears appropriate. Consider regular rebalancing to maintain your target allocation as market values change."
+//     } else {
+//       return "That's a great question about investing. As you continue your investment journey, remember that diversification, long-term thinking, and aligning your investments with your goals and risk tolerance are key principles for success. Would you like more specific information about any particular investment topic?"
+//     }
+//   } catch (error) {
+//     console.error("Error getting AI response:", error)
+//     throw error
+//   }
+// }
 
 // Function to search for investment terms and concepts
 export async function searchInvestmentTerms(query: string) {

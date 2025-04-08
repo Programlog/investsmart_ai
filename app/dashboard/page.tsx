@@ -6,10 +6,10 @@ import MarketTab from "@/components/dashboard/market-tab"
 import AssistantTab from "@/components/dashboard/assistant-tab"
 import LearningTab from "@/components/dashboard/learning-tab"
 import NewsTab from "@/components/dashboard/news-tab"
-import { checkUser } from "@/lib/checkUser"
+import { currentUser } from "@clerk/nextjs/server"
 
 export default async function DashboardPage() {
-  const user = await checkUser()
+  const user = await currentUser()
   const firstName = user?.firstName
 
   const welcomePrefix = firstName ? `${firstName}'s` : 'Your'
