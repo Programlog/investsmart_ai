@@ -10,7 +10,7 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Send, RefreshCw, Sparkles } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { askAiAssistant } from "@/lib/ai-service"
+import { generateText } from "@/lib/ai-service"
 
 type Message = {
   id: string
@@ -31,6 +31,7 @@ export default function AssistantTab() {
   const [input, setInput] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const [isRegenerating, setIsRegenerating] = useState(false)
+  const [error, setError] = useState<Error | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -54,10 +55,10 @@ export default function AssistantTab() {
     setMessages((prev) => [...prev, userMessage])
     setInput("")
     setIsLoading(true)
+    setError(null)
 
     try {
-      // In a real app, this would call an API endpoint
-      const response = await askAiAssistant(input)
+      const response = await generateText(input)
 
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
@@ -68,16 +69,16 @@ export default function AssistantTab() {
 
       setMessages((prev) => [...prev, assistantMessage])
     } catch (error) {
-      console.error("Error getting AI response:", error)
+      console.error('Chat error:', error)
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+      setError(error instanceof Error ? error : new Error("Unknown Error"))
 
-      const errorMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        content: "Sorry, I'm having trouble responding right now. Please try again later.",
-        role: "assistant",
+      setMessages((prev) => [...prev, {
+        id: Date.now().toString(),
+        content: 'Sorry, I encountered an error. Please try again',
+        role: 'assistant',
         timestamp: new Date(),
-      }
-
-      setMessages((prev) => [...prev, errorMessage])
+      }])
     } finally {
       setIsLoading(false)
     }
@@ -94,7 +95,6 @@ export default function AssistantTab() {
     setIsRegenerating(true)
 
     try {
-      // In a real app, this would call an API endpoint
       setTimeout(() => {
         const assistantMessage: Message = {
           id: Date.now().toString(),
@@ -183,6 +183,11 @@ export default function AssistantTab() {
                   </div>
                 </div>
               ))}
+              {error && (
+                <div className="text-red-500 text-sm">
+                  Error: {error.message}
+                </div>
+              )}
               <div ref={messagesEndRef} />
             </div>
           </ScrollArea>
@@ -290,4 +295,3 @@ export default function AssistantTab() {
     </div>
   )
 }
-

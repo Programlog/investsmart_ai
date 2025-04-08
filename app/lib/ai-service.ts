@@ -1,4 +1,55 @@
-// Mock function to simulate AI-generated investment profile
+import { GoogleGenerativeAI } from "@google/generative-ai";
+
+const geminiApiKey = "AIzaSyD5odSXjvSnSUkG6scYidq6_mapUN7FSC";
+
+if (!geminiApiKey) {
+  throw new Error("GEMINI_API_KEY environment variable is not set.");
+}
+
+const genAI = new GoogleGenerativeAI(geminiApiKey);
+const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-lite-001" }); 
+
+const chat = await model.startChat({
+  history: [],
+  generationConfig: {
+    temperature: 0.7,
+    maxOutputTokens: 100,
+    responseMimeType: "text/plain",
+  },
+  system_instruction: `You are a helpful AI chatbot specialized in finance. Your primary focus is to discuss topics such as investment strategies, market trends, and financial planning. 
+  You can also engage in basic casual conversation, specifically responding to greetings and farewells or similar simple remarks. If a user asks about a topic outside of finance, 
+  politely steer the conversation back to finance-related subjects. For example, you can say something like, 'That's an interesting topic, but let's get back to finance. 
+  Is there anything you'd like to discuss about investments or financial planning?' or 'While that's not my area of expertise, I can definitely help you with questions about market trends or investment strategies.' 
+  Keep your responses concise and helpful within the scope of finance and basic greetings/farewells.`,
+});
+
+let isAwaitingResponse = true;
+
+// REAL function
+export async function generateText(prompt: string): Promise<string> {
+  isAwaitingResponse = true;
+  try {
+    const result = await chat.sendMessageStream(prompt)
+    let text = "";
+
+    for await (const chunk of result.stream) {
+      const chunkOfText = await chunk.text();
+      text += chunkOfText;
+      // onChunk?.(chunkOfText);
+    }
+
+    isAwaitingResponse = false;
+
+    return text;
+  } catch (error: any) {
+    console.error("Error generating text:", error);
+    throw new Error(error.message); 
+  }
+}
+
+
+
+// Mock function
 export async function generateInvestmentProfile(answers: Record<string, string>) {
   // In a real app, this would use the AI SDK to generate a profile based on answers
   // For demo purposes, we'll return a mock profile
@@ -164,4 +215,3 @@ export async function getMarketData() {
     throw error
   }
 }
-
