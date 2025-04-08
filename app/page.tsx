@@ -29,9 +29,11 @@ export default function Home() {
                 </Button>
               </SignedOut>
             <SignedIn>
-              <Link href="/dashboard" className="text-sm text-muted-foreground hover:underline">
+            <Button asChild variant="outline">
+              <Link href="/dashboard">
                 Dashboard
               </Link>
+            </Button>
               <UserButton showName/>
             </SignedIn>
           </nav>

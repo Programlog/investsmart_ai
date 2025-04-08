@@ -15,8 +15,10 @@ datasource db {
 
 model User {
   id              String    @id @default(uuid())
+  clerkUserId     String    @unique
   email           String    @unique
-  passwordHash    String    @map("password_hash")
+  firstName       String
+  lastName        String
   createdAt       DateTime  @default(now()) @map("created_at")
   updatedAt       DateTime  @default(now()) @map("updated_at")
   profiles        Profile[]
@@ -83,11 +85,4 @@ model CurriculumProgress {
   status      String    @default("unstarted") // Enum: unstarted, in_progress, completed
   completedAt DateTime? @map("completed_at")
   user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-}
-
-model Cache {
-  id        String   @id @default(uuid())
-  key       String   @unique
-  value     Json
-  expiresAt DateTime @map("expires_at")
 }

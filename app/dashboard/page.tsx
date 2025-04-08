@@ -6,13 +6,13 @@ import MarketTab from "@/components/dashboard/market-tab"
 import AssistantTab from "@/components/dashboard/assistant-tab"
 import LearningTab from "@/components/dashboard/learning-tab"
 import NewsTab from "@/components/dashboard/news-tab"
-import { currentUser } from "@clerk/nextjs/server"
+import { checkUser } from "@/lib/checkUser"
 
 export default async function DashboardPage() {
-  const user = await currentUser()
-  const userName = user?.firstName
+  const user = await checkUser()
+  const firstName = user?.firstName
 
-  const welcomePrefix = userName ? `${userName}'s` : 'Your'
+  const welcomePrefix = firstName ? `${firstName}'s` : 'Your'
 
   return (
     <div className="flex flex-col min-h-screen">
