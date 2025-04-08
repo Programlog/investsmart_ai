@@ -1,32 +1,31 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
-const geminiApiKey = "AIzaSyD5odSXjvSnSUkG6scYidq6_mapUN7FSC";
+const geminiApiKey = "ADD YOUR KEY HERE";
 
 if (!geminiApiKey) {
   throw new Error("GEMINI_API_KEY environment variable is not set.");
 }
-
-const genAI = new GoogleGenerativeAI(geminiApiKey);
-const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-lite-001" }); 
-
-const chat = await model.startChat({
-  history: [],
-  generationConfig: {
-    temperature: 0.7,
-    maxOutputTokens: 100,
-    responseMimeType: "text/plain",
-  },
-  system_instruction: `You are a helpful AI chatbot specialized in finance. Your primary focus is to discuss topics such as investment strategies, market trends, and financial planning. 
+const systemInstruction = `You are a helpful AI chatbot specialized in finance and the economy. Your primary focus is to discuss topics such as investment strategies, market trends, and financial planning. 
   You can also engage in basic casual conversation, specifically responding to greetings and farewells or similar simple remarks. If a user asks about a topic outside of finance, 
   politely steer the conversation back to finance-related subjects. For example, you can say something like, 'That's an interesting topic, but let's get back to finance. 
   Is there anything you'd like to discuss about investments or financial planning?' or 'While that's not my area of expertise, I can definitely help you with questions about market trends or investment strategies.' 
-  Keep your responses concise and helpful within the scope of finance and basic greetings/farewells.`,
+  Keep your responses concise and helpful within the scope of finance and basic greetings/farewells. Important: keep your responses under 100 words. Responses should be in plain text, emojis are acceptable.`
+
+const genAI = new GoogleGenerativeAI(geminiApiKey);
+const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-lite-001", systemInstruction: systemInstruction }); 
+
+const chat = model.startChat({
+  history: [],
+  generationConfig: {
+    temperature: 0.7,
+    maxOutputTokens: 200,
+  },
 });
 
 let isAwaitingResponse = true;
 
 // REAL function
-export async function generateText(prompt: string): Promise<string> {
+export async function generateText(prompt: string, onChunk?: (chunk: string) => void): Promise<string> {
   isAwaitingResponse = true;
   try {
     const result = await chat.sendMessageStream(prompt)
@@ -35,7 +34,7 @@ export async function generateText(prompt: string): Promise<string> {
     for await (const chunk of result.stream) {
       const chunkOfText = await chunk.text();
       text += chunkOfText;
-      // onChunk?.(chunkOfText);
+      onChunk?.(chunkOfText);
     }
 
     isAwaitingResponse = false;

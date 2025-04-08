@@ -52,33 +52,51 @@ export default function AssistantTab() {
       timestamp: new Date(),
     }
 
-    setMessages((prev) => [...prev, userMessage])
+    const assistantMessage: Message = {
+      id: `ai_${Date.now()}`,
+      content: "",
+      role: "assistant", 
+      timestamp: new Date(),
+    };
+
+    setMessages((prev) => [...prev, userMessage, assistantMessage]);
     setInput("")
     setIsLoading(true)
     setError(null)
 
     try {
-      const response = await generateText(input)
+      await generateText(input, (chunk) => {
+        setMessages((prev) => 
+          prev.map(msg => 
+            msg.id === assistantMessage.id
+              ? {...msg, content: msg.content + chunk}
+              : msg
+          )
+        );
+      });
+  
+  
 
-      const assistantMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        content: response,
-        role: "assistant",
-        timestamp: new Date(),
-      }
+      // const assistantMessage: Message = {
+      //   id: (Date.now() + 1).toString(),
+      //   content: response,
+      //   role: "assistant",
+      //   timestamp: new Date(),
+      // }
 
-      setMessages((prev) => [...prev, assistantMessage])
+      // setMessages((prev) => [...prev, assistantMessage])
     } catch (error) {
       console.error('Chat error:', error)
       const errorMessage = error instanceof Error ? error.message : 'Unknown error'
       setError(error instanceof Error ? error : new Error("Unknown Error"))
 
-      setMessages((prev) => [...prev, {
-        id: Date.now().toString(),
-        content: 'Sorry, I encountered an error. Please try again',
-        role: 'assistant',
-        timestamp: new Date(),
-      }])
+      setMessages((prev) =>
+        prev.map(msg =>
+          msg.id === assistantMessage.id
+            ? {...msg, content: 'Sorry, I encountered an error. Please try again'}
+            : msg
+        )
+      );
     } finally {
       setIsLoading(false)
     }
