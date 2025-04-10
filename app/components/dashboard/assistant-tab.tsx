@@ -32,10 +32,19 @@ export default function AssistantTab() {
   const [isRegenerating, setIsRegenerating] = useState(false)
   const [error, setError] = useState<Error | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const promptInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     scrollToBottom()
   }, [messages])
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      promptInputRef.current?.focus()
+    }, 50)
+
+    return () => clearTimeout(timer)
+  }, [])
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
@@ -54,7 +63,7 @@ export default function AssistantTab() {
     const assistantMessage: Message = {
       id: `ai-${Date.now()}`,
       content: "",
-      role: "assistant", 
+      role: "assistant",
       timestamp: new Date(),
     };
 
@@ -64,19 +73,9 @@ export default function AssistantTab() {
     setError(null)
 
     try {
-      // await generateText(input, (chunk) => {
-      //   setMessages((prev) => 
-      //     prev.map(msg => 
-      //       msg.id === assistantMessage.id
-      //         ? {...msg, content: msg.content + chunk}
-      //         : msg
-      //     )
-      //   );
-      // });
-
       const response = await fetch('/api/ai', {
         method: 'POST',
-        headers: {'Content-Type': 'application/json'},
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ prompt: input })
       });
 
@@ -90,7 +89,6 @@ export default function AssistantTab() {
         const { value, done: readDone } = await reader.read();
         done = readDone;
         const chunk = decoder.decode(value);
-        
         setMessages(prev => {
           const last = prev[prev.length - 1];
           if (last.id.startsWith(`ai-`)) {
@@ -110,12 +108,15 @@ export default function AssistantTab() {
       setMessages((prev) =>
         prev.map(msg =>
           msg.id === assistantMessage.id
-            ? {...msg, content: 'Sorry, I encountered an error. Please try again'}
+            ? { ...msg, content: 'Sorry, I encountered an error. Please try again' }
             : msg
         )
       );
     } finally {
       setIsLoading(false)
+      setTimeout(() => {
+        promptInputRef.current?.focus()
+      }, 50)
     }
   }
 
@@ -229,6 +230,7 @@ export default function AssistantTab() {
           <div className="p-4 border-t">
             <div className="flex w-full items-center space-x-2">
               <Input
+                ref={promptInputRef}
                 placeholder="Ask a question about investing..."
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
