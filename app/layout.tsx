@@ -1,23 +1,28 @@
-import type { Metadata } from 'next'
-import './globals.css'
-import { ClerkProvider } from '@clerk/nextjs'
+import type { Metadata } from "next";
+import { Inter } from "next/font/google";
+import "./globals.css";
+import { ClerkProvider } from "@clerk/nextjs";
+import StoreProvider from "lib/store/StoreProvider";
+
+const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: 'InvestSmart AI App',
-  description: 'Smart Investment Guidance Powered by AI',
-  generator: 'InvestSmart AI',
-}
+  title: "InvestSmart AI",
+  description: "AI-Powered Investment Insights",
+};
 
 export default function RootLayout({
   children,
 }: Readonly<{
-  children: React.ReactNode
+  children: React.ReactNode;
 }>) {
   return (
     <ClerkProvider>
-      <html lang="en">
-        <body>{children}</body>
-      </html>
+      <StoreProvider>
+        <html lang="en">
+          <body className={inter.className}>{children}</body>
+        </html>
+      </StoreProvider>
     </ClerkProvider>
-  )
+  );
 }
