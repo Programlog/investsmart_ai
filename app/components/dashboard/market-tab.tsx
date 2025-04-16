@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts"
 import { ArrowUpRight, ArrowDownRight, RefreshCw } from "lucide-react"
+import { generateMarketCommentary } from "@/services/ai-service"
 
 type MarketIndex = {
   id: string
@@ -42,6 +43,23 @@ export default function MarketTab() {
   const [trendingAssets, setTrendingAssets] = useState<TrendingAsset[]>([])
   const [marketNews, setMarketNews] = useState<NewsItem[]>([])
   const [selectedIndex, setSelectedIndex] = useState<string | null>(null)
+  const [marketCommentary, setMarketCommentary] = useState<string>("")
+  const [isCommentaryLoading, setIsCommentaryLoading] = useState(false)
+
+  const updateMarketCommentary = async () => {
+    setIsCommentaryLoading(true);
+    try {
+      const commentary = await generateMarketCommentary({
+        indices: marketIndices,
+        trendingAssets
+      });
+      setMarketCommentary(commentary);
+    } catch (error) {
+      console.error("Error generating market commentary:", error);
+    } finally {
+      setIsCommentaryLoading(false);
+    }
+  };
 
   useEffect(() => {
     // Simulate API call to fetch market data
@@ -192,11 +210,17 @@ export default function MarketTab() {
     }, 1500)
   }, [])
 
+  useEffect(() => {
+    if (!isLoading && marketIndices.length > 0 && trendingAssets.length > 0) {
+      updateMarketCommentary();
+    }
+  }, [marketIndices, trendingAssets, isLoading]);
+
   const handleRefresh = () => {
     setIsRefreshing(true)
 
     // Simulate API call to refresh data
-    setTimeout(() => {
+    setTimeout(async () => {
       // Update with slightly different values
       setMarketIndices((prev) =>
         prev.map((index) => ({
@@ -220,6 +244,7 @@ export default function MarketTab() {
         })),
       )
 
+      await updateMarketCommentary();
       setIsRefreshing(false)
     }, 1000)
   }
@@ -400,17 +425,13 @@ export default function MarketTab() {
               <CardDescription>AI-generated analysis of current market conditions</CardDescription>
             </CardHeader>
             <CardContent>
-              <p className="text-sm">
-                Markets are showing mixed signals today with the S&P 500 and NASDAQ posting modest gains while the Dow
-                Jones Industrial Average is slightly down. Tech stocks continue to lead the rally, with particularly
-                strong performance from Apple, Tesla, and Microsoft. The Federal Reserve's recent comments suggesting
-                potential rate cuts later this year have provided a boost to market sentiment.
-              </p>
-              <p className="text-sm mt-4">
-                Investors should keep an eye on upcoming earnings reports from major tech companies, which could drive
-                further market movement. The recent retail sales data indicates consumer spending remains resilient
-                despite inflation concerns, which is a positive sign for the broader economy.
-              </p>
+              {isCommentaryLoading ? (
+                <div className="flex items-center justify-center py-4">
+                  <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent"></div>
+                </div>
+              ) : (
+                <p className="text-sm whitespace-pre-line">{marketCommentary}</p>
+              )}
             </CardContent>
           </Card>
         </>

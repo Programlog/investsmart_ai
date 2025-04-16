@@ -1,5 +1,5 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import DashboardHeader from "@/components/dashboard-header"
+import DashboardHeader from "@/components/common/dashboard-header"
 import SearchTab from "@/components/dashboard/search-tab"
 import PortfolioTab from "@/components/dashboard/portfolio-tab"
 import MarketTab from "@/components/dashboard/market-tab"

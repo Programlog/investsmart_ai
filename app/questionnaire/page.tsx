@@ -8,7 +8,7 @@ import { Progress } from "@/components/ui/progress"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Label } from "@/components/ui/label"
 import { ArrowLeft, ArrowRight, CheckCircle2, Loader2 } from "lucide-react"
-import QuestionnaireHeader from "@/components/questionnaire-header"
+import QuestionnaireHeader from "@/components/common/questionnaire-header"
 import { saveQuestionnaireResponses } from "@/actions/questionnaire-submission"
 
 export default function QuestionnairePage() {
