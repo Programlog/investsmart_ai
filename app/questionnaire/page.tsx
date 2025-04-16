@@ -7,13 +7,16 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Progress } from "@/components/ui/progress"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Label } from "@/components/ui/label"
-import { ArrowLeft, ArrowRight, CheckCircle2 } from "lucide-react"
-import QuestionnaireHeader from "@/components/questionnaire-header"
+import { ArrowLeft, ArrowRight, CheckCircle2, Loader2 } from "lucide-react"
+import QuestionnaireHeader from "@/components/common/questionnaire-header"
+import { saveQuestionnaireResponses } from "@/actions/questionnaire-submission"
 
 export default function QuestionnairePage() {
   const router = useRouter()
   const [currentStep, setCurrentStep] = useState(0)
   const [answers, setAnswers] = useState<Record<string, string>>({})
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [submitError, setSubmitError] = useState<string | null>(null)
 
   const questions = [
     {
@@ -72,12 +75,36 @@ export default function QuestionnairePage() {
     },
   ]
 
-  const handleNext = () => {
+  const handleNext = async () => {
     if (currentStep < questions.length - 1) {
       setCurrentStep(currentStep + 1)
     } else {
-      // Submit answers and navigate to results
-      router.push("/dashboard")
+      await handleSubmitQuestionnaire()
+    }
+  }
+
+  const handleSubmitQuestionnaire = async () => {
+    setIsSubmitting(true)
+    setSubmitError(null)
+
+    try {
+      const formattedResponses = Object.entries(answers).map(([questionId, answer]) => ({
+        questionId,
+        answer
+      }))
+
+      const result = await saveQuestionnaireResponses(formattedResponses)
+
+      if (result.success) {
+        router.push("/dashboard")
+      } else {
+        throw new Error(result.error || "Failed to save responses")
+      }
+    } catch (error) {
+      console.error("Error submitting questionnaire:", error)
+      setSubmitError(error instanceof Error ? error.message : "Submission failed")
+    } finally {
+      setIsSubmitting(false)
     }
   }
 
@@ -119,6 +146,13 @@ export default function QuestionnairePage() {
           </div>
         </div>
 
+        {submitError && (
+          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4" role="alert">
+            <p className="font-bold">Error</p>
+            <p>{submitError}</p>
+          </div>
+        )}
+
         <Card className="border shadow-md">
           <CardHeader>
             <CardTitle>{currentQuestion.title}</CardTitle>
@@ -144,8 +178,15 @@ export default function QuestionnairePage() {
             <Button variant="outline" onClick={handlePrevious} disabled={currentStep === 0}>
               <ArrowLeft className="mr-2 h-4 w-4" /> Previous
             </Button>
-            <Button onClick={handleNext} disabled={!canProceed}>
-              {isLastQuestion ? (
+            <Button
+              onClick={handleNext}
+              disabled={!canProceed || isSubmitting}
+            >
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Submitting...
+                </>
+              ) : isLastQuestion ? (
                 <>
                   Complete <CheckCircle2 className="ml-2 h-4 w-4" />
                 </>

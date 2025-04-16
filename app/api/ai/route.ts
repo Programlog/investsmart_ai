@@ -1,10 +1,9 @@
 import { NextResponse } from 'next/server';
-import { generateText } from '@/lib/ai-service';
+import { generateText } from '@/services/ai-service';
 
 export async function POST(req: Request) {
   try {
     const { prompt } = await req.json();
-    
     const encoder = new TextEncoder();
     const stream = new ReadableStream({
       async start(controller) {
@@ -14,7 +13,6 @@ export async function POST(req: Request) {
         controller.close();
       }
     });
-
     return new NextResponse(stream, {
       headers: { 'Content-Type': 'text/event-stream' }
     });

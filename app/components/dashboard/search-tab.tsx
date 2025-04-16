@@ -1,13 +1,18 @@
 "use client"
 
 import type React from "react"
+import { useState, useEffect } from "react"
+import { useDispatch, useSelector } from "react-redux"
+import { AppDispatch, RootState } from "@/store/store"
+import { fetchSearchResults, clearSearchResults } from "@/store/searchSlice"
 
-import { useState } from "react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Search, ExternalLink } from "lucide-react"
+import { Search, ExternalLink, AlertCircle } from "lucide-react"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { Skeleton } from "@/components/ui/skeleton"
 
 type SearchResult = {
   id: string
@@ -19,74 +24,37 @@ type SearchResult = {
 
 export default function SearchTab() {
   const [searchQuery, setSearchQuery] = useState("")
-  const [isSearching, setIsSearching] = useState(false)
-  const [searchResults, setSearchResults] = useState<SearchResult[]>([])
   const [activeFilter, setActiveFilter] = useState("all")
+
+  const dispatch = useDispatch<AppDispatch>()
+  const {
+    results: searchResults,
+    summary,
+    loading: isSearching,
+    error,
+  } = useSelector((state: RootState) => state.search)
+
+  useEffect(() => {
+    return () => {
+      dispatch(clearSearchResults())
+    }
+  }, [dispatch])
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!searchQuery.trim()) return
 
-    setIsSearching(true)
-
-    // Simulate API call
-    setTimeout(() => {
-      // Mock search results
-      const results: SearchResult[] = [
-        {
-          id: "1",
-          title: "What is an ETF? Understanding Exchange-Traded Funds",
-          snippet:
-            "Exchange-traded funds (ETFs) are a type of investment fund and exchange-traded product, i.e., they are traded on stock exchanges...",
-          url: "https://example.com/etf-guide",
-          source: "article",
-        },
-        {
-          id: "2",
-          title: "ETF Definition",
-          snippet:
-            "An ETF (Exchange-Traded Fund) is a basket of securities that trades on an exchange just like a stock. ETFs can contain various investments including stocks, bonds, and commodities.",
-          url: "#",
-          source: "definition",
-        },
-        {
-          id: "3",
-          title: "Just bought my first ETF! Any advice for a beginner? #investing #personalfinance",
-          snippet:
-            "Excited to start my investment journey with VOO. Looking for tips from experienced investors on how to build a diversified portfolio.",
-          url: "https://x.com/investor123/status/123456789",
-          source: "social",
-        },
-        {
-          id: "4",
-          title: "Best ETFs for Beginners in 2025",
-          snippet:
-            "Our top picks for new investors looking to get started with ETFs. We cover low-cost index funds, dividend ETFs, and sector-specific options.",
-          url: "https://example.com/best-etfs-2025",
-          source: "web",
-        },
-        {
-          id: "5",
-          title: "ETF vs Mutual Fund: Understanding the Differences",
-          snippet:
-            "While both ETFs and mutual funds are investment vehicles that pool money from investors to buy a diversified portfolio, they differ in how they're traded, managed, and taxed.",
-          url: "https://example.com/etf-vs-mutual-fund",
-          source: "article",
-        },
-      ]
-
-      setSearchResults(results)
-      setIsSearching(false)
-    }, 1000)
+    dispatch(fetchSearchResults({ query: searchQuery, filter: activeFilter }))
   }
 
   const filteredResults = searchResults.filter((result) => {
     if (activeFilter === "all") return true
-    return result.source === activeFilter
+    return result.source.toLowerCase() === activeFilter.toLowerCase()
   })
 
   const getSourceIcon = (source: string) => {
-    switch (source) {
+    const lowerSource = source?.toLowerCase() || "web"
+    switch (lowerSource) {
       case "article":
         return <span className="px-2 py-1 rounded-full bg-blue-100 text-blue-800 text-xs font-medium">Article</span>
       case "social":
@@ -96,9 +64,8 @@ export default function SearchTab() {
           <span className="px-2 py-1 rounded-full bg-green-100 text-green-800 text-xs font-medium">Definition</span>
         )
       case "web":
-        return <span className="px-2 py-1 rounded-full bg-orange-100 text-orange-800 text-xs font-medium">Web</span>
       default:
-        return null
+        return <span className="px-2 py-1 rounded-full bg-orange-100 text-orange-800 text-xs font-medium">Web</span>
     }
   }
 
@@ -117,6 +84,7 @@ export default function SearchTab() {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="flex-1"
+              aria-label="Search query"
             />
             <Button type="submit" disabled={isSearching || !searchQuery.trim()}>
               {isSearching ? (
@@ -130,7 +98,33 @@ export default function SearchTab() {
         </CardContent>
       </Card>
 
-      {searchResults.length > 0 && (
+      {error && (
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Error</AlertTitle>
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
+
+      {isSearching && (
+        <div className="space-y-4">
+          <Skeleton className="h-10 w-1/2" />
+          <div className="grid gap-4">
+            {[...Array(3)].map((_, i) => (
+              <Card key={i}>
+                <CardContent className="p-6 space-y-3">
+                  <Skeleton className="h-6 w-3/4" />
+                  <Skeleton className="h-4 w-full" />
+                  <Skeleton className="h-4 w-5/6" />
+                  <Skeleton className="h-4 w-1/4" />
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {!isSearching && !error && (searchResults.length > 0 || summary) && (
         <div className="space-y-4">
           <Tabs defaultValue="all" value={activeFilter} onValueChange={setActiveFilter}>
             <TabsList>
@@ -142,16 +136,27 @@ export default function SearchTab() {
             </TabsList>
           </Tabs>
 
+          {summary && activeFilter === "definition" && (
+            <Card className="bg-green-50 border-green-200">
+              <CardHeader>
+                <CardTitle className="text-lg text-green-900">AI Definition</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-green-800">{summary}</p>
+              </CardContent>
+            </Card>
+          )}
+
           <div className="grid gap-4">
             {filteredResults.map((result) => (
               <Card key={result.id} className="overflow-hidden">
                 <CardContent className="p-6">
-                  <div className="flex justify-between items-start mb-2">
-                    <h3 className="text-lg font-semibold">{result.title}</h3>
+                  <div className="flex justify-between items-start mb-2 gap-2">
+                    <h3 className="text-lg font-semibold flex-1">{result.title}</h3>
                     {getSourceIcon(result.source)}
                   </div>
                   <p className="text-muted-foreground mb-4">{result.snippet}</p>
-                  {result.url !== "#" ? (
+                  {result.url ? (
                     <a
                       href={result.url}
                       target="_blank"
@@ -161,7 +166,7 @@ export default function SearchTab() {
                       View Source <ExternalLink className="ml-1 h-3 w-3" />
                     </a>
                   ) : (
-                    <span className="text-sm text-muted-foreground">AI-generated definition</span>
+                    <span className="text-sm text-muted-foreground">Source link not available</span>
                   )}
                 </CardContent>
               </Card>
@@ -170,10 +175,10 @@ export default function SearchTab() {
         </div>
       )}
 
-      {searchQuery && !isSearching && searchResults.length === 0 && (
+      {!isSearching && !error && searchResults.length === 0 && !summary && searchQuery && (
         <Card>
           <CardContent className="p-6 text-center">
-            <p className="text-muted-foreground">No results found for "{searchQuery}". Try a different search term.</p>
+            <p className="text-muted-foreground">No results found for "{searchQuery}". Try a different search term or filter.</p>
           </CardContent>
         </Card>
       )}
