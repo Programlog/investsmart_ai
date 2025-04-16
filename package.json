@@ -66,7 +66,6 @@
     "react-redux": "^9.2.0",
     "react-resizable-panels": "^2.1.7",
     "react-router-dom": "^6.18.0",
-    "recharts": "^2.1.15",
     "sonner": "^1.7.1",
     "svix": "^1.63.1",
     "tailwind-merge": "^2.6.0",
