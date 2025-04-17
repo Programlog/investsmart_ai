@@ -1,42 +1,31 @@
 import { NextRequest, NextResponse } from "next/server"
+import { unstable_cache } from "next/cache"
 
-const cache: {
-    data: any | null
-    timestamp: number
-} = {
-    data: null,
-    timestamp: 0,
-}
-
-const CACHE_TTL = 60 * 1000 // 60 seconds
-
-export async function GET(req: NextRequest) {
-    const now = Date.now()
-    if (cache.data && now - cache.timestamp < CACHE_TTL) {
-        return NextResponse.json(cache.data)
-    }
-    try {
-        const apiKey = process.env.FINNHUB_API_KEY
-        if (!apiKey) {
-            return NextResponse.json({ error: "API key missing" }, { status: 500 })
-        }
-
+const getMarketStatus = unstable_cache(
+    async (apiKey: string) => {
         const res = await fetch(`https://finnhub.io/api/v1/stock/market-status?exchange=US&token=${apiKey}`)
         if (!res.ok) {
-            return NextResponse.json({ error: "Failed to fetch market status" }, { status: 502 })
+            throw new Error("Failed to fetch market status")
         }
         const data = await res.json()
-
-        const result = {
+        return {
             market: "US",
             status: data.marketState === "REGULAR" ? "open" : "closed",
             session: data.session || "regular",
             holiday: data.holiday || undefined,
         }
-        // Update cache
-        cache.data = result
-        cache.timestamp = now
+    },
+    ["finnhub-market-status"], // cache key
+    { revalidate: 60 } // cache for 60 seconds
+)
 
+export async function GET(req: NextRequest) {
+    try {
+        const apiKey = process.env.FINNHUB_API_KEY
+        if (!apiKey) {
+            return NextResponse.json({ error: "API key missing" }, { status: 500 })
+        }
+        const result = await getMarketStatus(apiKey)
         return NextResponse.json(result)
     } catch (err) {
         return NextResponse.json({ error: "Unable to load market status" }, { status: 500 })
