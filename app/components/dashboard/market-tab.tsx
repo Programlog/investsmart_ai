@@ -4,9 +4,10 @@ import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts"
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer } from "recharts"
 import { ArrowUpRight, ArrowDownRight, RefreshCw } from "lucide-react"
 import { generateMarketCommentary } from "@/services/ai-service"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 
 type MarketIndex = {
   id: string
@@ -37,6 +38,13 @@ type NewsItem = {
   url: string
 }
 
+type MarketStatus = {
+  market: string
+  status: "open" | "closed"
+  session: string
+  holiday?: string
+}
+
 export default function MarketTab() {
   const [isLoading, setIsLoading] = useState(true)
   const [isRefreshing, setIsRefreshing] = useState(false)
@@ -47,6 +55,8 @@ export default function MarketTab() {
   const [marketCommentary, setMarketCommentary] = useState<string>("")
   const [isCommentaryLoading, setIsCommentaryLoading] = useState(false)
   const [newsError, setNewsError] = useState<string | null>(null)
+  const [marketStatus, setMarketStatus] = useState<MarketStatus | null>(null)
+  const [marketStatusError, setMarketStatusError] = useState<string | null>(null)
 
   const updateMarketCommentary = async () => {
     setIsCommentaryLoading(true);
@@ -188,7 +198,7 @@ export default function MarketTab() {
     const fetchNews = async () => {
       setNewsError(null)
       try {
-        const res = await fetch("/api/news/finnhub")
+        const res = await fetch("/api/finnhub/news")
         if (!res.ok) throw new Error("Failed to fetch news")
         const news = await res.json()
         if (Array.isArray(news)) {
@@ -203,6 +213,22 @@ export default function MarketTab() {
       }
     }
     fetchNews()
+  }, [])
+
+  useEffect(() => {
+    const fetchMarketStatus = async () => {
+      setMarketStatusError(null)
+      try {
+        const res = await fetch("/api/finnhub/market-status")
+        if (!res.ok) throw new Error("Failed to fetch market status")
+        const data = await res.json()
+        setMarketStatus(data)
+      } catch (err) {
+        setMarketStatusError("Unable to load market status.")
+        setMarketStatus(null)
+      }
+    }
+    fetchMarketStatus()
   }, [])
 
   useEffect(() => {
@@ -257,19 +283,76 @@ export default function MarketTab() {
     }
   }
 
+  const getStatusBadge = (status: string, session: string) => {
+    if (status === "open") {
+      if (session === "pre") {
+        return <Badge className="bg-yellow-100 text-yellow-800 border-yellow-300">Pre-Market</Badge>
+      }
+      if (session === "post") {
+        return <Badge className="bg-blue-100 text-blue-800 border-blue-300">Post-Market</Badge>
+      }
+      return <Badge className="bg-green-100 text-green-800 border-green-300">Open</Badge>
+    }
+    return <Badge className="bg-red-100 text-red-800 border-red-300">Closed</Badge>
+  }
+
+  // Helper to format session for tooltip
+  const formatSession = (session: string) => {
+    switch (session) {
+      case "pre":
+        return "Pre-Market"
+      case "regular":
+        return "Regular Session"
+      case "post":
+        return "Post-Market"
+      default:
+        return session.charAt(0).toUpperCase() + session.slice(1)
+    }
+  }
+
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold">Market Overview</h2>
-        <Button variant="outline" size="sm" onClick={handleRefresh} disabled={isLoading || isRefreshing}>
-          {isRefreshing ? (
-            <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent mr-2" />
-          ) : (
-            <RefreshCw className="h-4 w-4 mr-2" />
-          )}
-          Refresh
-        </Button>
-      </div>
+      <TooltipProvider delayDuration={0}>
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
+          <div className="flex items-center">
+            <h2 className="text-2xl font-bold mr-4">Market Overview</h2>
+            {/* Market Status Badge with Tooltip */}
+            <div className="flex items-center space-x-2">
+              {marketStatusError ? (
+                <Badge className="bg-gray-100 text-gray-800 border-gray-300">Status Unavailable</Badge>
+              ) : marketStatus ? (
+                <>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span tabIndex={0} aria-label={`Market session: ${formatSession(marketStatus.session)}`}>
+                        {getStatusBadge(marketStatus.status, marketStatus.session)}
+                      </span>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom" className="text-xs px-3 py-2 rounded-md shadow bg-white border text-gray-700">
+                      Session: <span className="font-medium">{formatSession(marketStatus.session)}</span>
+                    </TooltipContent>
+                  </Tooltip>
+                  {marketStatus.holiday && (
+                    <span className="ml-2 text-xs text-orange-600 font-medium">
+                      Holiday: {marketStatus.holiday}
+                    </span>
+                  )}
+                </>
+              ) : (
+                <Badge className="bg-gray-100 text-gray-800 border-gray-300 animate-pulse">Loading...</Badge>
+              )}
+            </div>
+          </div>
+          <Button variant="outline" size="sm" onClick={handleRefresh} disabled={isLoading || isRefreshing}>
+            {isRefreshing ? (
+              <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent mr-2" />
+            ) : (
+              <RefreshCw className="h-4 w-4 mr-2" />
+            )}
+            Refresh
+          </Button>
+        </div>
+      </TooltipProvider>
 
       {isLoading ? (
         <div className="flex flex-col items-center justify-center py-12">
@@ -327,7 +410,7 @@ export default function MarketTab() {
                         <CartesianGrid strokeDasharray="3 3" />
                         <XAxis dataKey="time" />
                         <YAxis domain={["auto", "auto"]} />
-                        <Tooltip formatter={(value) => typeof value === 'number' ? value.toFixed(2) : value} />
+                        <RechartsTooltip formatter={(value) => typeof value === 'number' ? value.toFixed(2) : value} />
                         <Line
                           type="monotone"
                           dataKey="value"
