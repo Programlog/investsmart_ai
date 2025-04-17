@@ -1,6 +1,21 @@
 import { NextResponse } from "next/server"
 
+const cache: {
+    data: any[] | null
+    timestamp: number
+} = {
+    data: null,
+    timestamp: 0,
+}
+
+const CACHE_TTL = 60 * 1000 * 5 // 5 minutes
+
 export async function GET() {
+    const now = Date.now()
+    if (cache.data && now - cache.timestamp < CACHE_TTL) {
+        return NextResponse.json(cache.data)
+    }
+
     const apiKey = process.env.FINNHUB_API_KEY
     if (!apiKey) {
         return NextResponse.json({ error: "Finnhub API key not set" }, { status: 500 })
@@ -23,6 +38,8 @@ export async function GET() {
                 datetime: item.datetime,
                 url: item.url,
             }))
+        cache.data = news
+        cache.timestamp = now
         return NextResponse.json(news)
     } catch (err) {
         return NextResponse.json({ error: "Unable to load market news at this time." }, { status: 500 })
