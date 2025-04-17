@@ -30,9 +30,10 @@ type TrendingAsset = {
 
 type NewsItem = {
   id: string
-  title: string
+  headline: string
   source: string
-  time: string
+  summary: string
+  datetime: number
   url: string
 }
 
@@ -45,6 +46,7 @@ export default function MarketTab() {
   const [selectedIndex, setSelectedIndex] = useState<string | null>(null)
   const [marketCommentary, setMarketCommentary] = useState<string>("")
   const [isCommentaryLoading, setIsCommentaryLoading] = useState(false)
+  const [newsError, setNewsError] = useState<string | null>(null)
 
   const updateMarketCommentary = async () => {
     setIsCommentaryLoading(true);
@@ -60,6 +62,17 @@ export default function MarketTab() {
       setIsCommentaryLoading(false);
     }
   };
+
+  const formatTime = (unix: number) => {
+    const date = new Date(unix * 1000)
+    return date.toLocaleString(undefined, {
+      hour: "2-digit",
+      minute: "2-digit",
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    })
+  }
 
   useEffect(() => {
     // Simulate API call to fetch market data
@@ -164,50 +177,32 @@ export default function MarketTab() {
         },
       ]
 
-      const news: NewsItem[] = [
-        {
-          id: "1",
-          title: "Fed signals potential rate cuts later this year as inflation cools",
-          source: "Bloomberg",
-          time: "2 hours ago",
-          url: "#",
-        },
-        {
-          id: "2",
-          title: "Tech stocks rally on strong earnings reports from major players",
-          source: "CNBC",
-          time: "4 hours ago",
-          url: "#",
-        },
-        {
-          id: "3",
-          title: "Oil prices drop amid concerns over global demand outlook",
-          source: "Reuters",
-          time: "6 hours ago",
-          url: "#",
-        },
-        {
-          id: "4",
-          title: "Retail sales data shows consumer spending remains resilient",
-          source: "Wall Street Journal",
-          time: "8 hours ago",
-          url: "#",
-        },
-        {
-          id: "5",
-          title: "Housing market shows signs of cooling as mortgage rates climb",
-          source: "Financial Times",
-          time: "10 hours ago",
-          url: "#",
-        },
-      ]
-
       setMarketIndices(indices)
       setTrendingAssets(trending)
-      setMarketNews(news)
       setSelectedIndex(indices[0].id)
       setIsLoading(false)
     }, 1500)
+  }, [])
+
+  useEffect(() => {
+    const fetchNews = async () => {
+      setNewsError(null)
+      try {
+        const res = await fetch("/api/news/finnhub")
+        if (!res.ok) throw new Error("Failed to fetch news")
+        const news = await res.json()
+        if (Array.isArray(news)) {
+          setMarketNews(news)
+        } else {
+          setNewsError("Unable to load market news at this time.")
+          setMarketNews([])
+        }
+      } catch (err) {
+        setNewsError("Unable to load market news at this time.")
+        setMarketNews([])
+      }
+    }
+    fetchNews()
   }, [])
 
   useEffect(() => {
@@ -354,19 +349,44 @@ export default function MarketTab() {
                 <CardDescription>Latest financial headlines</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="space-y-4">
-                  {marketNews.map((item) => (
-                    <div key={item.id} className="border-b pb-3 last:border-0">
-                      <a href={item.url} className="font-medium hover:underline block mb-1">
-                        {item.title}
-                      </a>
-                      <div className="flex justify-between text-sm text-muted-foreground">
-                        <span>{item.source}</span>
-                        <span>{item.time}</span>
+                {newsError ? (
+                  <div className="text-red-500 text-sm py-4">{newsError}</div>
+                ) : (
+                  <div
+                    className="space-y-4 max-h-[420px] overflow-y-auto pr-2 transition-all scrollbar-thin scrollbar-thumb-muted-foreground/40 scrollbar-track-transparent hover:scrollbar-thumb-muted-foreground/70"
+                    style={{
+                      scrollbarWidth: "thin",
+                      scrollbarColor: "rgba(107,114,128,0.4) transparent",
+                    }}
+                  >
+                    {marketNews.slice(0, 10).map((item, idx) => (
+                      <div
+                        key={item.id}
+                        className={`border-b pb-3 last:border-0 transition-opacity ${idx > 2 ? "opacity-80" : ""
+                          }`}
+                        style={{
+                          display: idx < 3 ? "block" : "block",
+                        }}
+                      >
+                        <a
+                          href={item.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="font-medium hover:underline block mb-1 text-base"
+                        >
+                          {item.headline}
+                        </a>
+                        <div className="flex justify-between text-xs text-muted-foreground mb-1">
+                          <span>{item.source}</span>
+                          <span>{formatTime(item.datetime)}</span>
+                        </div>
+                        {item.summary && (
+                          <p className="text-sm text-muted-foreground line-clamp-3">{item.summary}</p>
+                        )}
                       </div>
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>
