@@ -57,6 +57,9 @@ export default function MarketTab() {
   const [newsError, setNewsError] = useState<string | null>(null)
   const [marketStatus, setMarketStatus] = useState<MarketStatus | null>(null)
   const [marketStatusError, setMarketStatusError] = useState<string | null>(null)
+  const [indexQuotes, setIndexQuotes] = useState<Record<string, any>>({})
+  const [indexQuotesLoading, setIndexQuotesLoading] = useState(true)
+  const [indexQuotesError, setIndexQuotesError] = useState<string | null>(null)
 
   const updateMarketCommentary = async () => {
     setIsCommentaryLoading(true);
@@ -198,7 +201,7 @@ export default function MarketTab() {
     const fetchNews = async () => {
       setNewsError(null)
       try {
-        const res = await fetch("/api/finnhub/news")
+        const res = await fetch("/api/market/news")
         if (!res.ok) throw new Error("Failed to fetch news")
         const news = await res.json()
         if (Array.isArray(news)) {
@@ -219,7 +222,7 @@ export default function MarketTab() {
     const fetchMarketStatus = async () => {
       setMarketStatusError(null)
       try {
-        const res = await fetch("/api/finnhub/market-status")
+        const res = await fetch("/api/market/status")
         if (!res.ok) throw new Error("Failed to fetch market status")
         const data = await res.json()
         setMarketStatus(data)
@@ -236,6 +239,28 @@ export default function MarketTab() {
       updateMarketCommentary();
     }
   }, [marketIndices, trendingAssets, isLoading]);
+
+  useEffect(() => {
+    let isMounted = true
+    setIndexQuotesLoading(true)
+    setIndexQuotesError(null)
+    fetch("/api/market/index-quote")
+      .then(async (res) => {
+        if (!res.ok) throw new Error("Failed to fetch index quotes")
+        const data = await res.json()
+        if (isMounted) {
+          setIndexQuotes(data)
+          setIndexQuotesLoading(false)
+        }
+      })
+      .catch(() => {
+        if (isMounted) {
+          setIndexQuotesError("Unable to load real-time index quotes.")
+          setIndexQuotesLoading(false)
+        }
+      })
+    return () => { isMounted = false }
+  }, [])
 
   const handleRefresh = () => {
     setIsRefreshing(true)
@@ -352,6 +377,7 @@ export default function MarketTab() {
             Refresh
           </Button>
         </div>
+
       </TooltipProvider>
 
       {isLoading ? (
@@ -362,38 +388,53 @@ export default function MarketTab() {
       ) : (
         <>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            {marketIndices.map((index) => (
-              <Card
-                key={index.id}
-                className={`cursor-pointer transition-all ${selectedIndex === index.id ? "border-primary" : ""}`}
-                onClick={() => setSelectedIndex(index.id)}
-              >
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-lg">{index.name}</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex items-baseline">
-                    <span className="text-2xl font-bold">
-                      {index.value.toLocaleString(undefined, { maximumFractionDigits: 2 })}
-                    </span>
-                    <div
-                      className={`ml-2 flex items-center ${index.changePercent >= 0 ? "text-green-600" : "text-red-600"}`}
-                    >
-                      {index.changePercent >= 0 ? (
-                        <ArrowUpRight className="h-4 w-4 mr-1" />
-                      ) : (
-                        <ArrowDownRight className="h-4 w-4 mr-1" />
-                      )}
-                      <span>{index.changePercent.toFixed(2)}%</span>
+            {marketIndices.map((index) => {
+              // Map index.id to Finnhub symbol
+              const symbolMap: Record<string, string> = {
+                sp500: "^GSPC",
+                nasdaq: "^IXIC",
+                dow: "^DJI",
+                russell: "^RUT",
+              }
+              const quote = indexQuotes[symbolMap[index.id]]
+              // Use real-time data if available, fallback to mock
+              const price = quote?.price ?? index.value
+              const volume = quote?.volume ?? undefined
+              const change = quote?.change ?? index.change
+              const changePercent = quote?.changePercent ?? index.changePercent
+              return (
+                <Card
+                  key={index.id}
+                  className={`cursor-pointer transition-all ${selectedIndex === index.id ? "border-primary" : ""}`}
+                  onClick={() => setSelectedIndex(index.id)}
+                >
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-lg">{index.name}</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex items-baseline">
+                      <span className="text-2xl font-bold">
+                        {Number(price).toFixed(2)}
+                      </span>
+                      <div
+                        className={`ml-2 flex items-center ${changePercent >= 0 ? "text-green-600" : "text-red-600"}`}
+                      >
+                        {changePercent >= 0 ? (
+                          <ArrowUpRight className="h-4 w-4 mr-1" />
+                        ) : (
+                          <ArrowDownRight className="h-4 w-4 mr-1" />
+                        )}
+                        <span>{Number(changePercent).toFixed(2)}%</span>
+                      </div>
                     </div>
-                  </div>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    {index.change >= 0 ? "+" : ""}
-                    {index.change.toFixed(2)} today
-                  </p>
-                </CardContent>
-              </Card>
-            ))}
+                    <p className="text-sm text-muted-foreground mt-1">
+                      {change >= 0 ? "+" : ""}
+                      {Number(change).toFixed(2)} today
+                    </p>
+                  </CardContent>
+                </Card>
+              )
+            })}
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
