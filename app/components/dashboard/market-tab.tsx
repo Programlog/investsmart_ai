@@ -60,6 +60,9 @@ export default function MarketTab() {
   const [indexQuotes, setIndexQuotes] = useState<Record<string, any>>({})
   const [indexQuotesLoading, setIndexQuotesLoading] = useState(true)
   const [indexQuotesError, setIndexQuotesError] = useState<string | null>(null)
+  const [lineChartData, setLineChartData] = useState<{ date: string; close: number }[]>([])
+  const [lineChartLoading, setLineChartLoading] = useState(false)
+  const [lineChartError, setLineChartError] = useState<string | null>(null)
 
   const updateMarketCommentary = async () => {
     setIsCommentaryLoading(true);
@@ -262,6 +265,34 @@ export default function MarketTab() {
     return () => { isMounted = false }
   }, [])
 
+  // Map index.id to Alpha Vantage symbol
+  const symbolMap: Record<string, string> = {
+    sp500: "SPY",
+    nasdaq: "QQQ",
+    dow: "DIA",
+    russell: "IWM",
+  }
+
+  // Fetch real-time line chart data for selected index
+  useEffect(() => {
+    if (!selectedIndex) return
+    const symbol = symbolMap[selectedIndex] || "SPY"
+    setLineChartLoading(true)
+    setLineChartError(null)
+    fetch(`/api/market/daily?symbol=${symbol}`)
+      .then(async (res) => {
+        const data = await res.json()
+        if (!res.ok || data?.error) throw new Error(data?.error || "Failed to fetch chart data")
+        setLineChartData(data)
+        setLineChartLoading(false)
+      })
+      .catch((err) => {
+        setLineChartError(err.message || "Unable to load chart data.")
+        setLineChartData([])
+        setLineChartLoading(false)
+      })
+  }, [selectedIndex])
+
   const handleRefresh = () => {
     setIsRefreshing(true)
 
@@ -447,25 +478,24 @@ export default function MarketTab() {
         <Card className="lg:col-span-2">
           <CardHeader>
             <CardTitle>{selectedIndexData?.name || "Index"} Performance</CardTitle>
-            <CardDescription>Today's trading activity</CardDescription>
+            <CardDescription>Last 100 trading days</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="h-[300px]">
-              {!selectedIndexData ? (
-                // Placeholder skeleton for chart container
-                <div className="w-full h-full flex items-center justify-center">
-                  <div className="w-full h-2/3 bg-muted/40 rounded animate-pulse" />
-                </div>
+              {lineChartLoading ? (
+                <div className="w-full h-2/3 bg-muted/40 rounded animate-pulse" />
+              ) : lineChartError ? (
+                <div className="text-red-500 text-sm py-4">{lineChartError}</div>
               ) : (
                 <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={selectedIndexData.data}>
+                  <LineChart data={lineChartData}>
                     <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="time" />
+                    <XAxis dataKey="date" minTickGap={20} />
                     <YAxis domain={["auto", "auto"]} />
                     <RechartsTooltip formatter={(value) => typeof value === 'number' ? value.toFixed(2) : value} />
                     <Line
                       type="monotone"
-                      dataKey="value"
+                      dataKey="close"
                       stroke="#8b5cf6"
                       strokeWidth={2}
                       dot={false}
