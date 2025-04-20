@@ -46,7 +46,7 @@ type MarketStatus = {
 }
 
 export default function MarketTab() {
-  const [isLoading, setIsLoading] = useState(true)
+  const [isLoading, setIsLoading] = useState(false)
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [marketIndices, setMarketIndices] = useState<MarketIndex[]>([])
   const [trendingAssets, setTrendingAssets] = useState<TrendingAsset[]>([])
@@ -89,6 +89,7 @@ export default function MarketTab() {
 
   useEffect(() => {
     // Simulate API call to fetch market data
+    setIsLoading(false)
     setTimeout(() => {
       const indices: MarketIndex[] = [
         {
@@ -193,7 +194,6 @@ export default function MarketTab() {
       setMarketIndices(indices)
       setTrendingAssets(trending)
       setSelectedIndex(indices[0].id)
-      setIsLoading(false)
     }, 1500)
   }, [])
 
@@ -380,206 +380,215 @@ export default function MarketTab() {
 
       </TooltipProvider>
 
-      {isLoading ? (
-        <div className="flex flex-col items-center justify-center py-12">
-          <div className="h-12 w-12 rounded-full border-4 border-primary/30 border-t-primary animate-spin"></div>
-          <p className="mt-4 text-muted-foreground">Loading market data...</p>
-        </div>
-      ) : (
-        <>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            {marketIndices.map((index) => {
-              // Map index.id to Finnhub symbol
-              const symbolMap: Record<string, string> = {
-                sp500: "^GSPC",
-                nasdaq: "^IXIC",
-                dow: "^DJI",
-                russell: "^RUT",
-              }
-              const quote = indexQuotes[symbolMap[index.id]]
-              // Use real-time data if available, fallback to mock
-              const price = quote?.price ?? index.value
-              const volume = quote?.volume ?? undefined
-              const change = quote?.change ?? index.change
-              const changePercent = quote?.changePercent ?? index.changePercent
-              return (
-                <Card
-                  key={index.id}
-                  className={`cursor-pointer transition-all ${selectedIndex === index.id ? "border-primary" : ""}`}
-                  onClick={() => setSelectedIndex(index.id)}
-                >
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-lg">{index.name}</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="flex items-baseline">
-                      <span className="text-2xl font-bold">
-                        {Number(price).toFixed(2)}
-                      </span>
-                      <div
-                        className={`ml-2 flex items-center ${changePercent >= 0 ? "text-green-600" : "text-red-600"}`}
-                      >
-                        {changePercent >= 0 ? (
-                          <ArrowUpRight className="h-4 w-4 mr-1" />
-                        ) : (
-                          <ArrowDownRight className="h-4 w-4 mr-1" />
-                        )}
-                        <span>{Number(changePercent).toFixed(2)}%</span>
-                      </div>
+      {/* Indices Section Placeholder */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        {marketIndices.length === 0
+          ? Array.from({ length: 4 }).map((_, i) => (
+            <div
+              key={i}
+              className="border rounded-lg p-4 flex flex-col gap-2 animate-pulse bg-muted/40 min-h-[110px]"
+              aria-hidden="true"
+            >
+              <div className="h-4 w-1/3 bg-muted rounded mb-2" />
+              <div className="h-8 w-2/3 bg-muted rounded mb-1" />
+              <div className="h-3 w-1/2 bg-muted rounded" />
+            </div>
+          ))
+          : marketIndices.map((index) => {
+            // Map index.id to Finnhub symbol
+            const symbolMap: Record<string, string> = {
+              sp500: "^GSPC",
+              nasdaq: "^IXIC",
+              dow: "^DJI",
+              russell: "^RUT",
+            }
+            const quote = indexQuotes[symbolMap[index.id]]
+            // Use real-time data if available, fallback to mock
+            const price = quote?.price ?? index.value
+            const volume = quote?.volume ?? undefined
+            const change = quote?.change ?? index.change
+            const changePercent = quote?.changePercent ?? index.changePercent
+            return (
+              <Card
+                key={index.id}
+                className={`cursor-pointer transition-all ${selectedIndex === index.id ? "border-primary" : ""}`}
+                onClick={() => setSelectedIndex(index.id)}
+              >
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-lg">{index.name}</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex items-baseline">
+                    <span className="text-2xl font-bold">
+                      {Number(price).toFixed(2)}
+                    </span>
+                    <div
+                      className={`ml-2 flex items-center ${changePercent >= 0 ? "text-green-600" : "text-red-600"}`}
+                    >
+                      {changePercent >= 0 ? (
+                        <ArrowUpRight className="h-4 w-4 mr-1" />
+                      ) : (
+                        <ArrowDownRight className="h-4 w-4 mr-1" />
+                      )}
+                      <span>{Number(changePercent).toFixed(2)}%</span>
                     </div>
-                    <p className="text-sm text-muted-foreground mt-1">
-                      {change >= 0 ? "+" : ""}
-                      {Number(change).toFixed(2)} today
-                    </p>
-                  </CardContent>
-                </Card>
-              )
-            })}
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <Card className="lg:col-span-2">
-              <CardHeader>
-                <CardTitle>{selectedIndexData?.name} Performance</CardTitle>
-                <CardDescription>Today's trading activity</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="h-[300px]">
-                  {selectedIndexData && (
-                    <ResponsiveContainer width="100%" height="100%">
-                      <LineChart data={selectedIndexData.data}>
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="time" />
-                        <YAxis domain={["auto", "auto"]} />
-                        <RechartsTooltip formatter={(value) => typeof value === 'number' ? value.toFixed(2) : value} />
-                        <Line
-                          type="monotone"
-                          dataKey="value"
-                          stroke="#8b5cf6"
-                          strokeWidth={2}
-                          dot={false}
-                          activeDot={{ r: 6 }}
-                        />
-                      </LineChart>
-                    </ResponsiveContainer>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Market News</CardTitle>
-                <CardDescription>Latest financial headlines</CardDescription>
-              </CardHeader>
-              <CardContent>
-                {newsError ? (
-                  <div className="text-red-500 text-sm py-4">{newsError}</div>
-                ) : (
-                  <div
-                    className="space-y-4 max-h-[420px] overflow-y-auto pr-2 transition-all scrollbar-thin scrollbar-thumb-muted-foreground/40 scrollbar-track-transparent hover:scrollbar-thumb-muted-foreground/70"
-                    style={{
-                      scrollbarWidth: "thin",
-                      scrollbarColor: "rgba(107,114,128,0.4) transparent",
-                    }}
-                  >
-                    {marketNews.slice(0, 10).map((item, idx) => (
-                      <div
-                        key={item.id}
-                        className={`border-b pb-3 last:border-0 transition-opacity ${idx > 2 ? "opacity-80" : ""
-                          }`}
-                        style={{
-                          display: idx < 3 ? "block" : "block",
-                        }}
-                      >
-                        <a
-                          href={item.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="font-medium hover:underline block mb-1 text-base"
-                        >
-                          {item.headline}
-                        </a>
-                        <div className="flex justify-between text-xs text-muted-foreground mb-1">
-                          <span>{item.source}</span>
-                          <span>{formatTime(item.datetime)}</span>
-                        </div>
-                        {item.summary && (
-                          <p className="text-sm text-muted-foreground line-clamp-3">{item.summary}</p>
-                        )}
-                      </div>
-                    ))}
                   </div>
-                )}
-              </CardContent>
-            </Card>
-          </div>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    {change >= 0 ? "+" : ""}
+                    {Number(change).toFixed(2)} today
+                  </p>
+                </CardContent>
+              </Card>
+            )
+          })}
+      </div>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Trending Assets</CardTitle>
-              <CardDescription>Most active stocks with market sentiment</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="rounded-md border">
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b bg-muted/50">
-                        <th className="h-10 px-4 text-left font-medium">Symbol</th>
-                        <th className="h-10 px-4 text-left font-medium">Name</th>
-                        <th className="h-10 px-4 text-right font-medium">Price</th>
-                        <th className="h-10 px-4 text-right font-medium">Change</th>
-                        <th className="h-10 px-4 text-right font-medium">Volume</th>
-                        <th className="h-10 px-4 text-center font-medium">Sentiment</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {trendingAssets.map((asset) => (
-                        <tr key={asset.id} className="border-b">
-                          <td className="p-4 font-medium">{asset.symbol}</td>
-                          <td className="p-4">{asset.name}</td>
-                          <td className="p-4 text-right">${asset.price.toFixed(2)}</td>
-                          <td
-                            className={`p-4 text-right ${asset.changePercent >= 0 ? "text-green-600" : "text-red-600"}`}
-                          >
-                            <div className="flex items-center justify-end">
-                              {asset.changePercent >= 0 ? (
-                                <ArrowUpRight className="h-4 w-4 mr-1" />
-                              ) : (
-                                <ArrowDownRight className="h-4 w-4 mr-1" />
-                              )}
-                              {asset.changePercent.toFixed(2)}%
-                            </div>
-                          </td>
-                          <td className="p-4 text-right">{asset.volume}</td>
-                          <td className="p-4 text-center">{getSentimentBadge(asset.sentiment)}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Market Commentary</CardTitle>
-              <CardDescription>AI-generated analysis of current market conditions</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {isCommentaryLoading ? (
-                <div className="flex items-center justify-center py-4">
-                  <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent"></div>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <Card className="lg:col-span-2">
+          <CardHeader>
+            <CardTitle>{selectedIndexData?.name || "Index"} Performance</CardTitle>
+            <CardDescription>Today's trading activity</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="h-[300px]">
+              {!selectedIndexData ? (
+                // Placeholder skeleton for chart container
+                <div className="w-full h-full flex items-center justify-center">
+                  <div className="w-full h-2/3 bg-muted/40 rounded animate-pulse" />
                 </div>
               ) : (
-                <p className="text-sm whitespace-pre-line">{marketCommentary}</p>
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={selectedIndexData.data}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="time" />
+                    <YAxis domain={["auto", "auto"]} />
+                    <RechartsTooltip formatter={(value) => typeof value === 'number' ? value.toFixed(2) : value} />
+                    <Line
+                      type="monotone"
+                      dataKey="value"
+                      stroke="#8b5cf6"
+                      strokeWidth={2}
+                      dot={false}
+                      activeDot={{ r: 6 }}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
               )}
-            </CardContent>
-          </Card>
-        </>
-      )}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Market News</CardTitle>
+            <CardDescription>Latest financial headlines</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {newsError ? (
+              <div className="text-red-500 text-sm py-4">{newsError}</div>
+            ) : (
+              <div
+                className="space-y-4 max-h-[420px] overflow-y-auto pr-2 transition-all scrollbar-thin scrollbar-thumb-muted-foreground/40 scrollbar-track-transparent hover:scrollbar-thumb-muted-foreground/70"
+                style={{
+                  scrollbarWidth: "thin",
+                  scrollbarColor: "rgba(107,114,128,0.4) transparent",
+                }}
+              >
+                {marketNews.slice(0, 10).map((item, idx) => (
+                  <div
+                    key={item.id}
+                    className={`border-b pb-3 last:border-0 transition-opacity ${idx > 2 ? "opacity-80" : ""
+                      }`}
+                    style={{
+                      display: idx < 3 ? "block" : "block",
+                    }}
+                  >
+                    <a
+                      href={item.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="font-medium hover:underline block mb-1 text-base"
+                    >
+                      {item.headline}
+                    </a>
+                    <div className="flex justify-between text-xs text-muted-foreground mb-1">
+                      <span>{item.source}</span>
+                      <span>{formatTime(item.datetime)}</span>
+                    </div>
+                    {item.summary && (
+                      <p className="text-sm text-muted-foreground line-clamp-3">{item.summary}</p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Trending Assets</CardTitle>
+          <CardDescription>Most active stocks with market sentiment</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="rounded-md border">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b bg-muted/50">
+                    <th className="h-10 px-4 text-left font-medium">Symbol</th>
+                    <th className="h-10 px-4 text-left font-medium">Name</th>
+                    <th className="h-10 px-4 text-right font-medium">Price</th>
+                    <th className="h-10 px-4 text-right font-medium">Change</th>
+                    <th className="h-10 px-4 text-right font-medium">Volume</th>
+                    <th className="h-10 px-4 text-center font-medium">Sentiment</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {trendingAssets.map((asset) => (
+                    <tr key={asset.id} className="border-b">
+                      <td className="p-4 font-medium">{asset.symbol}</td>
+                      <td className="p-4">{asset.name}</td>
+                      <td className="p-4 text-right">${asset.price.toFixed(2)}</td>
+                      <td
+                        className={`p-4 text-right ${asset.changePercent >= 0 ? "text-green-600" : "text-red-600"}`}
+                      >
+                        <div className="flex items-center justify-end">
+                          {asset.changePercent >= 0 ? (
+                            <ArrowUpRight className="h-4 w-4 mr-1" />
+                          ) : (
+                            <ArrowDownRight className="h-4 w-4 mr-1" />
+                          )}
+                          {asset.changePercent.toFixed(2)}%
+                        </div>
+                      </td>
+                      <td className="p-4 text-right">{asset.volume}</td>
+                      <td className="p-4 text-center">{getSentimentBadge(asset.sentiment)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Market Commentary</CardTitle>
+          <CardDescription>AI-generated analysis of current market conditions</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {isCommentaryLoading ? (
+            <div className="flex items-center justify-center py-4">
+              <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent"></div>
+            </div>
+          ) : (
+            <p className="text-sm whitespace-pre-line">{marketCommentary}</p>
+          )}
+        </CardContent>
+      </Card>
     </div>
   )
 }
