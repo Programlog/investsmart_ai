@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -9,13 +9,27 @@ import { ArrowUpRight, ArrowDownRight, RefreshCw } from "lucide-react"
 import { generateMarketCommentary } from "@/services/ai-service"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 
+// Symbol maps consolidated outside component to avoid redefinition
+const SYMBOL_MAP_FINNHUB = {
+  sp500: "^GSPC",
+  nasdaq: "^IXIC",
+  dow: "^DJI",
+  russell: "^RUT",
+}
+
+const SYMBOL_MAP_ALPHA_VANTAGE = {
+  sp500: "SPY",
+  nasdaq: "QQQ",
+  dow: "DIA",
+  russell: "IWM",
+}
+
 type MarketIndex = {
   id: string
   name: string
   value: number
   change: number
   changePercent: number
-  data: { time: string; value: number }[]
 }
 
 type TrendingAsset = {
@@ -64,7 +78,10 @@ export default function MarketTab() {
   const [lineChartLoading, setLineChartLoading] = useState(false)
   const [lineChartError, setLineChartError] = useState<string | null>(null)
 
-  const updateMarketCommentary = async () => {
+  // Memoize this function to prevent recreation on every render
+  const updateMarketCommentary = useMemo(() => async () => {
+    if (!marketIndices.length || !trendingAssets.length) return;
+
     setIsCommentaryLoading(true);
     try {
       const commentary = await generateMarketCommentary({
@@ -77,7 +94,7 @@ export default function MarketTab() {
     } finally {
       setIsCommentaryLoading(false);
     }
-  };
+  }, [marketIndices, trendingAssets]);
 
   const formatTime = (unix: number) => {
     const date = new Date(unix * 1000)
@@ -90,9 +107,9 @@ export default function MarketTab() {
     })
   }
 
+  // Load initial market data
   useEffect(() => {
-    // Simulate API call to fetch market data
-    setIsLoading(false)
+    setIsLoading(true)
     setTimeout(() => {
       const indices: MarketIndex[] = [
         {
@@ -101,10 +118,6 @@ export default function MarketTab() {
           value: 5123.45,
           change: 23.45,
           changePercent: 0.46,
-          data: Array.from({ length: 24 }, (_, i) => ({
-            time: `${i}:00`,
-            value: 5100 + Math.random() * 50,
-          })),
         },
         {
           id: "dow",
@@ -112,10 +125,6 @@ export default function MarketTab() {
           value: 38765.32,
           change: -125.68,
           changePercent: -0.32,
-          data: Array.from({ length: 24 }, (_, i) => ({
-            time: `${i}:00`,
-            value: 38800 - Math.random() * 200,
-          })),
         },
         {
           id: "nasdaq",
@@ -123,10 +132,6 @@ export default function MarketTab() {
           value: 16234.78,
           change: 78.92,
           changePercent: 0.49,
-          data: Array.from({ length: 24 }, (_, i) => ({
-            time: `${i}:00`,
-            value: 16200 + Math.random() * 100,
-          })),
         },
         {
           id: "russell",
@@ -134,10 +139,6 @@ export default function MarketTab() {
           value: 2045.67,
           change: 12.34,
           changePercent: 0.61,
-          data: Array.from({ length: 24 }, (_, i) => ({
-            time: `${i}:00`,
-            value: 2030 + Math.random() * 30,
-          })),
         },
       ]
 
@@ -197,9 +198,11 @@ export default function MarketTab() {
       setMarketIndices(indices)
       setTrendingAssets(trending)
       setSelectedIndex(indices[0].id)
+      setIsLoading(false)
     }, 1500)
   }, [])
 
+  // Fetch news data
   useEffect(() => {
     const fetchNews = async () => {
       setNewsError(null)
@@ -210,8 +213,7 @@ export default function MarketTab() {
         if (Array.isArray(news)) {
           setMarketNews(news)
         } else {
-          setNewsError("Unable to load market news at this time.")
-          setMarketNews([])
+          throw new Error("Invalid news data format")
         }
       } catch (err) {
         setNewsError("Unable to load market news at this time.")
@@ -221,6 +223,7 @@ export default function MarketTab() {
     fetchNews()
   }, [])
 
+  // Fetch market status
   useEffect(() => {
     const fetchMarketStatus = async () => {
       setMarketStatusError(null)
@@ -237,63 +240,68 @@ export default function MarketTab() {
     fetchMarketStatus()
   }, [])
 
+  // Update commentary when market data changes
   useEffect(() => {
     if (!isLoading && marketIndices.length > 0 && trendingAssets.length > 0) {
       updateMarketCommentary();
     }
-  }, [marketIndices, trendingAssets, isLoading]);
+  }, [updateMarketCommentary, isLoading, marketIndices.length, trendingAssets.length]);
 
+  // Fetch index quotes
   useEffect(() => {
     let isMounted = true
-    setIndexQuotesLoading(true)
-    setIndexQuotesError(null)
-    fetch("/api/market/index-quote")
-      .then(async (res) => {
+
+    const fetchIndexQuotes = async () => {
+      setIndexQuotesLoading(true)
+      setIndexQuotesError(null)
+      try {
+        const res = await fetch("/api/market/index-quote")
         if (!res.ok) throw new Error("Failed to fetch index quotes")
         const data = await res.json()
         if (isMounted) {
           setIndexQuotes(data)
-          setIndexQuotesLoading(false)
         }
-      })
-      .catch(() => {
+      } catch (error) {
         if (isMounted) {
           setIndexQuotesError("Unable to load real-time index quotes.")
+        }
+      } finally {
+        if (isMounted) {
           setIndexQuotesLoading(false)
         }
-      })
+      }
+    }
+
+    fetchIndexQuotes();
     return () => { isMounted = false }
   }, [])
 
-  // Map index.id to Alpha Vantage symbol
-  const symbolMap: Record<string, string> = {
-    sp500: "SPY",
-    nasdaq: "QQQ",
-    dow: "DIA",
-    russell: "IWM",
-  }
-
-  // Fetch real-time line chart data for selected index
+  // Fetch chart data for selected index
   useEffect(() => {
     if (!selectedIndex) return
-    const symbol = symbolMap[selectedIndex] || "SPY"
-    setLineChartLoading(true)
-    setLineChartError(null)
-    fetch(`/api/market/daily?symbol=${symbol}`)
-      .then(async (res) => {
+
+    const fetchChartData = async () => {
+      const symbol = SYMBOL_MAP_ALPHA_VANTAGE[selectedIndex as keyof typeof SYMBOL_MAP_ALPHA_VANTAGE] || "SPY"
+      setLineChartLoading(true)
+      setLineChartError(null)
+
+      try {
+        const res = await fetch(`/api/market/daily?symbol=${symbol}`)
         const data = await res.json()
         if (!res.ok || data?.error) throw new Error(data?.error || "Failed to fetch chart data")
         setLineChartData(data)
-        setLineChartLoading(false)
-      })
-      .catch((err) => {
-        setLineChartError(err.message || "Unable to load chart data.")
+      } catch (err) {
+        setLineChartError((err as Error).message || "Unable to load chart data.")
         setLineChartData([])
+      } finally {
         setLineChartLoading(false)
-      })
+      }
+    }
+
+    fetchChartData();
   }, [selectedIndex])
 
-  const handleRefresh = () => {
+  const handleRefresh = async () => {
     setIsRefreshing(true)
 
     // Simulate API call to refresh data
@@ -305,10 +313,6 @@ export default function MarketTab() {
           value: index.value * (1 + (Math.random() * 0.01 - 0.005)),
           change: index.change * (1 + (Math.random() * 0.1 - 0.05)),
           changePercent: index.changePercent * (1 + (Math.random() * 0.1 - 0.05)),
-          data: index.data.map((point, i) => ({
-            ...point,
-            value: point.value * (1 + (Math.random() * 0.01 - 0.005)),
-          })),
         })),
       )
 
@@ -326,7 +330,10 @@ export default function MarketTab() {
     }, 1000)
   }
 
-  const selectedIndexData = marketIndices.find((index) => index.id === selectedIndex)
+  const selectedIndexData = useMemo(() =>
+    marketIndices.find((index) => index.id === selectedIndex),
+    [marketIndices, selectedIndex]
+  );
 
   const getSentimentBadge = (sentiment: string) => {
     switch (sentiment) {
@@ -426,19 +433,11 @@ export default function MarketTab() {
             </div>
           ))
           : marketIndices.map((index) => {
-            // Map index.id to Finnhub symbol
-            const symbolMap: Record<string, string> = {
-              sp500: "^GSPC",
-              nasdaq: "^IXIC",
-              dow: "^DJI",
-              russell: "^RUT",
-            }
-            const quote = indexQuotes[symbolMap[index.id]]
-            // Use real-time data if available, fallback to mock
-            const price = quote?.price ?? index.value
-            const volume = quote?.volume ?? undefined
-            const change = quote?.change ?? index.change
-            const changePercent = quote?.changePercent ?? index.changePercent
+            const symbol = SYMBOL_MAP_FINNHUB[index.id as keyof typeof SYMBOL_MAP_FINNHUB];
+            const quote = indexQuotes[symbol];
+            const price = quote?.price ?? index.value;
+            const change = quote?.change ?? index.change;
+            const changePercent = quote?.changePercent ?? index.changePercent;
             return (
               <Card
                 key={index.id}
