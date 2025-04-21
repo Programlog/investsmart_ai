@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from "recharts"
@@ -11,19 +11,99 @@ type ChartPeriod = "1D" | "5D" | "1M" | "6M" | "YTD" | "1Y" | "5Y" | "All"
 export default function StockChart({ data }: { data: any }) {
     const [activePeriod, setActivePeriod] = useState<ChartPeriod>("1D")
     const [showEvents, setShowEvents] = useState(false)
+    const [chartData, setChartData] = useState<any[]>([])
+    const [loading, setLoading] = useState(true)
+    const [error, setError] = useState<string | null>(null)
 
-    const chartData = data.chartData || []
+    // Fetch chart data from API
+    useEffect(() => {
+        let isMounted = true
+        async function fetchChart() {
+            setLoading(true)
+            setError(null)
+            try {
+                const now = new Date()
+                let startDate = new Date(now)
+                let timeframe = "5Min"
+                let limit = 100
+
+                switch (activePeriod) {
+                    case "1D":
+                        // Use today at 09:30:00 local time as start, and now as end
+                        startDate.setHours(9, 30, 0, 0)
+                        startDate.setMinutes(30)
+                        startDate.setSeconds(0)
+                        startDate.setMilliseconds(0)
+                        timeframe = "5Min"
+                        limit = 78
+                        break
+                    case "5D":
+                        startDate.setDate(now.getDate() - 7)
+                        timeframe = "15Min"
+                        limit = 130
+                        break
+                    case "1M":
+                        startDate.setMonth(now.getMonth() - 1)
+                        timeframe = "1Hour"
+                        limit = 160
+                        break
+                    case "6M":
+                        startDate.setMonth(now.getMonth() - 6)
+                        timeframe = "1Day"
+                        limit = 130
+                        break
+                    case "YTD":
+                        startDate = new Date(now.getFullYear(), 0, 1)
+                        timeframe = "1Day"
+                        limit = 180
+                        break
+                    case "1Y":
+                        startDate.setFullYear(now.getFullYear() - 1)
+                        timeframe = "1Day"
+                        limit = 260
+                        break
+                    case "5Y":
+                        startDate.setFullYear(now.getFullYear() - 5)
+                        timeframe = "1Week"
+                        limit = 260
+                        break
+                    case "All":
+                        startDate.setFullYear(now.getFullYear() - 10)
+                        timeframe = "1Month"
+                        limit = 120
+                        break
+                    default:
+                        break
+                }
+
+                // Always use feed=iex for US stocks
+                const start = startDate.toISOString()
+                const end = now.toISOString()
+                const url = `/api/market/stock?symbol=${encodeURIComponent(data.symbol)}&timeframe=${timeframe}&limit=${limit}&start=${encodeURIComponent(start)}&end=${encodeURIComponent(end)}&feed=iex`
+                const res = await fetch(url)
+                const json = await res.json()
+                if (!res.ok || !json.chartData) throw new Error(json.error || "Failed to load chart data")
+                if (isMounted) setChartData(json.chartData)
+            } catch (err: any) {
+                if (isMounted) setError(err.message || "Error loading chart data")
+            } finally {
+                if (isMounted) setLoading(false)
+            }
+        }
+        fetchChart()
+        return () => { isMounted = false }
+    }, [data.symbol, activePeriod])
+
     const lastPrice = chartData[chartData.length - 1]?.price || data.price
     const startPrice = chartData[0]?.price || data.previousClose
-    const max = Math.max(...chartData.map((d: any) => d.price)) * 1.001 // Add a little padding
-    const min = Math.min(...chartData.map((d: any) => d.price)) * 0.999 // Add a little padding
+    const max = chartData.length > 0 ? Math.max(...chartData.map((d: any) => d.price)) * 1.001 : 0
+    const min = chartData.length > 0 ? Math.min(...chartData.map((d: any) => d.price)) * 0.999 : 0
 
     // Select visible data points based on the period
     const visibleData = (() => {
         switch (activePeriod) {
             case "1D":
                 return chartData
-            // In a real implementation, you would have different data sets for different time periods
             default:
                 return chartData
         }
@@ -65,39 +145,47 @@ export default function StockChart({ data }: { data: any }) {
                 </div>
 
                 <div className="h-[350px] w-full">
-                    <ResponsiveContainer width="100%" height="100%">
-                        <LineChart data={visibleData} margin={{ top: 5, right: 5, left: 5, bottom: 5 }}>
-                            <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                            <XAxis dataKey="time" axisLine={false} tickLine={false} minTickGap={60} tick={{ fontSize: 12 }} />
-                            <YAxis
-                                domain={[min, max]}
-                                axisLine={false}
-                                tickLine={false}
-                                tick={{ fontSize: 12 }}
-                                orientation="right"
-                                tickCount={5}
-                                tickFormatter={(value) => value.toFixed(2)}
-                            />
-                            <Tooltip
-                                formatter={(value: any) => [`$${value}`, "Price"]}
-                                labelFormatter={() => ""}
-                                contentStyle={{
-                                    borderRadius: "6px",
-                                    padding: "8px 12px",
-                                    border: "1px solid var(--border)",
-                                    boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
-                                }}
-                            />
-                            <ReferenceLine y={data.previousClose} stroke="red" strokeDasharray="3 3" />
-                            <Line
-                                type="monotone"
-                                dataKey="price"
-                                stroke={isPositiveDay ? "#10b981" : "#ef4444"}
-                                dot={false}
-                                strokeWidth={2}
-                            />
-                        </LineChart>
-                    </ResponsiveContainer>
+                    {loading ? (
+                        <div className="flex items-center justify-center h-full">
+                            <div className="h-8 w-8 rounded-full border-4 border-primary/30 border-t-primary animate-spin"></div>
+                        </div>
+                    ) : error ? (
+                        <div className="flex items-center justify-center h-full text-red-500">{error}</div>
+                    ) : (
+                        <ResponsiveContainer width="100%" height="100%">
+                            <LineChart data={visibleData} margin={{ top: 5, right: 5, left: 5, bottom: 5 }}>
+                                <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                                <XAxis dataKey="time" axisLine={false} tickLine={false} minTickGap={60} tick={{ fontSize: 12 }} />
+                                <YAxis
+                                    domain={[min, max]}
+                                    axisLine={false}
+                                    tickLine={false}
+                                    tick={{ fontSize: 12 }}
+                                    orientation="right"
+                                    tickCount={5}
+                                    tickFormatter={(value) => value.toFixed(2)}
+                                />
+                                <Tooltip
+                                    formatter={(value: any) => [`$${value}`, "Price"]}
+                                    labelFormatter={() => ""}
+                                    contentStyle={{
+                                        borderRadius: "6px",
+                                        padding: "8px 12px",
+                                        border: "1px solid var(--border)",
+                                        boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
+                                    }}
+                                />
+                                <ReferenceLine y={data.previousClose} stroke="red" strokeDasharray="3 3" />
+                                <Line
+                                    type="monotone"
+                                    dataKey="price"
+                                    stroke={isPositiveDay ? "#10b981" : "#ef4444"}
+                                    dot={false}
+                                    strokeWidth={2}
+                                />
+                            </LineChart>
+                        </ResponsiveContainer>
+                    )}
                 </div>
             </CardContent>
         </Card>
