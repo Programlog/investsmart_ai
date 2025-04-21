@@ -26,13 +26,14 @@ async function fetchLatestQuote(symbol: string) {
         throw new Error("Invalid quote response structure from Alpaca")
     }
 
-    const { ap: askPrice, bp: bidPrice, t: timestamp } = data.quote
+    const { ap: askPrice, bp: bidPrice, t: timestamp, z: tape } = data.quote
     return {
         symbol,
         askPrice,
         bidPrice,
         price: askPrice ?? bidPrice,
         timestamp,
+        tape,
     }
 }
 

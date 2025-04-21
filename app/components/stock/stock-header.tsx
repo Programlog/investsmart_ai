@@ -12,6 +12,7 @@ interface QuoteData {
     bidPrice: number | null
     price: number | null
     timestamp: string
+    tape?: string // Add tape to the interface
 }
 
 interface StaticStockData {
@@ -29,6 +30,13 @@ export default function StockHeader({ data }: { data: StaticStockData }) {
     const [error, setError] = useState<string | null>(null)
     const isPositiveChange = data.change >= 0
 
+    // Tape mapping for display
+    const tapeLabels: Record<string, string> = {
+        A: "New York Stock Exchange)",
+        B: "NYSE Arca, Bats, IEX or other regional exchanges ",
+        C: "NASDAQ",
+        O: "Over-the-counter",
+    }
     useEffect(() => {
         if (!data.symbol) return
 
@@ -54,10 +62,10 @@ export default function StockHeader({ data }: { data: StaticStockData }) {
         }
 
         fetchQuote()
-        const intervalId = setInterval(fetchQuote, 30000) // 30s, matches API cache
+        const intervalId = setInterval(fetchQuote, 60000) // Refresh every 60 seconds
 
         return () => clearInterval(intervalId)
-    }, [data.symbol, isLoading])
+    }, [data.symbol])
 
     const formatTimestamp = (isoTimestamp?: string) => {
         if (!isoTimestamp) return "N/A"
@@ -75,10 +83,11 @@ export default function StockHeader({ data }: { data: StaticStockData }) {
 
     return (
         <div className="space-y-4">
-            {/* Static Info */}
             <div className="flex flex-col space-y-1">
                 <div className="text-sm text-muted-foreground">
-                    {data.exchange} - {data.exchange} Real Time Price • {data.currency}
+                    {quoteData?.tape && tapeLabels[quoteData.tape]
+                        ? tapeLabels[quoteData.tape]
+                        : `${data.exchange} - ${data.exchange} Real Time Price • ${data.currency}`}
                 </div>
                 <div className="flex flex-wrap items-center gap-3">
                     <h1 className="text-3xl font-bold">
