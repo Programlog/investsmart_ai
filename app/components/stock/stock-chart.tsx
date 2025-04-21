@@ -24,19 +24,27 @@ export default function StockChart({ data }: { data: any }) {
             try {
                 const now = new Date()
                 let startDate = new Date(now)
+                let endDate = new Date(now)
                 let timeframe = "5Min"
                 let limit = 100
 
                 switch (activePeriod) {
-                    case "1D":
-                        // Use today at 09:30:00 local time as start, and now as end
+                    case "1D": {
+                        // Find the most recent weekday (Mon-Fri)
+                        let day = now.getDay()
+                        let offset = 0
+                        if (day === 0) offset = -2 // Sunday -> Friday
+                        else if (day === 6) offset = -1 // Saturday -> Friday
+                        startDate = new Date(now)
+                        startDate.setDate(now.getDate() + offset)
                         startDate.setHours(9, 30, 0, 0)
-                        startDate.setMinutes(30)
-                        startDate.setSeconds(0)
-                        startDate.setMilliseconds(0)
+                        endDate = new Date(now)
+                        endDate.setDate(now.getDate() + offset)
+                        endDate.setHours(16, 0, 0, 0)
                         timeframe = "5Min"
                         limit = 78
                         break
+                    }
                     case "5D":
                         startDate.setDate(now.getDate() - 7)
                         timeframe = "15Min"
@@ -76,10 +84,9 @@ export default function StockChart({ data }: { data: any }) {
                         break
                 }
 
-                // Always use feed=iex for US stocks
                 const start = startDate.toISOString()
-                const end = now.toISOString()
-                const url = `/api/market/stock?symbol=${encodeURIComponent(data.symbol)}&timeframe=${timeframe}&limit=${limit}&start=${encodeURIComponent(start)}&end=${encodeURIComponent(end)}&feed=iex`
+                const end = endDate.toISOString()
+                const url = `/api/market/stock?symbol=${encodeURIComponent(data.symbol)}&timeframe=${timeframe}&limit=${limit}&start=${encodeURIComponent(start)}&end=${encodeURIComponent(end)}`
                 const res = await fetch(url)
                 const json = await res.json()
                 if (!res.ok || !json.chartData) throw new Error(json.error || "Failed to load chart data")

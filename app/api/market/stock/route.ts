@@ -6,10 +6,10 @@ const ALPACA_SECRET_KEY = process.env.ALPACA_SECRET_KEY
 export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url)
     const symbol = searchParams.get("symbol")
-    const timeframe = searchParams.get("timeframe") || "5Day"
+    const timeframe = searchParams.get("timeframe") || "1Day" // e.g. 1Min, 5Min, 15Min, 1Hour, 1Day
     const limit = searchParams.get("limit") || "100"
-    const start = searchParams.get("start") // ISO8601
-    const end = searchParams.get("end") // ISO8601
+    const start = searchParams.get("start") // ISO8601, optional
+    const end = searchParams.get("end") // ISO8601, optional
 
     if (!symbol) {
         return NextResponse.json({ error: "Missing symbol parameter" }, { status: 400 })
