@@ -1,46 +1,40 @@
 import { NextRequest, NextResponse } from "next/server"
-import { unstable_cache } from "next/cache" // Import unstable_cache
 
 const ALPACA_API_KEY = process.env.ALPACA_API_KEY
 const ALPACA_SECRET_KEY = process.env.ALPACA_SECRET_KEY
 
-// --- Function to fetch latest quote with caching ---
-const fetchLatestQuote = unstable_cache(
-    async (symbol: string) => {
-        const url = `https://data.alpaca.markets/v2/stocks/${encodeURIComponent(symbol)}/quotes/latest?feed=iex`
-        const res = await fetch(url, {
-            headers: {
-                "APCA-API-KEY-ID": ALPACA_API_KEY || "",
-                "APCA-API-SECRET-KEY": ALPACA_SECRET_KEY || "",
-            },
-            next: { revalidate: 30 }, // Cache for 30 seconds
-        })
+async function fetchLatestQuote(symbol: string) {
+    const url = `https://data.alpaca.markets/v2/stocks/${encodeURIComponent(symbol)}/quotes/latest?feed=iex`
+    const res = await fetch(url, {
+        headers: {
+            "APCA-API-KEY-ID": ALPACA_API_KEY || "",
+            "APCA-API-SECRET-KEY": ALPACA_SECRET_KEY || "",
+        },
+        next: { revalidate: 30 }, // Cache for 30 seconds
+    })
 
-        if (!res.ok) {
-            const errorBody = await res.text()
-            console.error(`Alpaca quote API error for ${symbol}: ${res.status} ${res.statusText}`, errorBody) // Debug log
-            throw new Error(`Failed to fetch latest quote from Alpaca: ${res.statusText}`)
-        }
+    if (!res.ok) {
+        const errorBody = await res.text()
+        console.error(`Alpaca quote API error for ${symbol}: ${res.status} ${res.statusText}`, errorBody)
+        throw new Error(`Failed to fetch latest quote from Alpaca: ${res.statusText}`)
+    }
 
-        const data = await res.json()
+    const data = await res.json()
 
-        if (!data.quote) {
-            console.error(`Invalid quote response for ${symbol}:`, data) // Debug log
-            throw new Error("Invalid quote response structure from Alpaca")
-        }
+    if (!data.quote) {
+        console.error(`Invalid quote response for ${symbol}:`, data)
+        throw new Error("Invalid quote response structure from Alpaca")
+    }
 
-        // Extract relevant fields from the quote object
-        const { ap: askPrice, bp: bidPrice, t: timestamp } = data.quote
-        return {
-            symbol,
-            askPrice,
-            bidPrice,
-            price: askPrice ?? bidPrice, // Use ask price, fallback to bid price
-            timestamp,
-        }
-    },
-    ["alpaca-latest-quote"], // Cache key prefix
-)
+    const { ap: askPrice, bp: bidPrice, t: timestamp } = data.quote
+    return {
+        symbol,
+        askPrice,
+        bidPrice,
+        price: askPrice ?? bidPrice,
+        timestamp,
+    }
+}
 
 export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url)
@@ -104,7 +98,7 @@ export async function GET(req: NextRequest) {
 
         return NextResponse.json({ chartData })
     } catch (error: any) {
-        console.error(`Error fetching bars for ${symbol}:`, error) // Log the specific error
+        console.error(`Error fetching bars for ${symbol}:`, error)
         return NextResponse.json({ error: error.message || "Internal server error fetching bars" }, { status: 500 })
     }
 }
