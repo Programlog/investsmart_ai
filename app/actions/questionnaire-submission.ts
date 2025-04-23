@@ -36,7 +36,7 @@ export async function saveQuestionnaireResponses(responses: QuestionResponse[]) 
     }
 
     // Save responses in transaction
-    const result = await db.$transaction(async (tx) => {
+    const result = await db.$transaction(async (tx: { response: { deleteMany: (arg0: { where: { userId: any; questionId: { in: string[] } } }) => any; create: (arg0: { data: { userId: any; questionId: string; answer: string } }) => any } }) => {
       // Delete existing responses
       await tx.response.deleteMany({
         where: {

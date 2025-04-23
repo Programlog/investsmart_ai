@@ -19,9 +19,9 @@ const fetchDailyCloses = unstable_cache(
 
         const closes = Object.entries(series)
             .slice(0, 100)
-            .map(([date, ohlc]: [string, Record<string, string>]) => ({
+            .map(([date, ohlc]) => ({
                 date,
-                close: parseFloat(ohlc["4. close"]),
+                close: parseFloat((ohlc as Record<string, string>)["4. close"]),
             }))
             .reverse();
 
