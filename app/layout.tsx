@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
-import "@/styles/globals.css";
+import "@/components/ui/globals.css";
 import { ClerkProvider } from "@clerk/nextjs";
 import StoreProvider from "@/store/StoreProvider";
 import { Analytics } from "@vercel/analytics/react"
