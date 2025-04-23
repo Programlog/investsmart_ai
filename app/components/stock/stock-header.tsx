@@ -65,7 +65,7 @@ export default function StockHeader({ data }: { data: StaticStockData }) {
         const intervalId = setInterval(fetchQuote, 60000) // Refresh every 60 seconds
 
         return () => clearInterval(intervalId)
-    }, [data.symbol])
+    }, [data.symbol, isLoading])
 
     const formatTimestamp = (isoTimestamp?: string) => {
         if (!isoTimestamp) return "N/A"

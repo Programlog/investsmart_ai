@@ -33,7 +33,7 @@ export async function GET() {
     try {
         const news = await getNews(apiKey)
         return NextResponse.json(news)
-    } catch (err) {
+    } catch (_) {
         return NextResponse.json({ error: "Unable to load market news at this time." }, { status: 500 })
     }
 }

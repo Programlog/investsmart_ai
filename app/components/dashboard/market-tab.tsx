@@ -215,7 +215,7 @@ export default function MarketTab() {
         } else {
           throw new Error("Invalid news data format")
         }
-      } catch (err) {
+      } catch (_) {
         setNewsError("Unable to load market news at this time.")
         setMarketNews([])
       }
@@ -232,7 +232,7 @@ export default function MarketTab() {
         if (!res.ok) throw new Error("Failed to fetch market status")
         const data = await res.json()
         setMarketStatus(data)
-      } catch (err) {
+      } catch (_) {
         setMarketStatusError("Unable to load market status.")
         setMarketStatus(null)
       }

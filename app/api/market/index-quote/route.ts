@@ -17,7 +17,7 @@ export async function GET() {
         try {
             const quote = await fetchIndexQuote(symbol)
             if (quote) results[symbol] = quote
-        } catch (err) {
+        } catch (_) {
             results[symbol] = null
         }
     }
