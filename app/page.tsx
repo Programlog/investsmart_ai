@@ -1,12 +1,10 @@
 "use client";
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { BarChart3, ArrowRight, Menu } from "lucide-react";
+import { ArrowRight, Menu } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import {
-  SignInButton,
-  SignUpButton,
   SignedOut,
   SignedIn,
   UserButton,
@@ -86,9 +84,8 @@ export default function Home() {
           {/* Left Content */}
           <div className="flex flex-col justify-center">
             <h1
-              className={`${
-                isMobile ? "text-4xl" : "text-6xl"
-              } font-bold text-black leading-tight`}
+              className={`${isMobile ? "text-4xl" : "text-6xl"
+                } font-bold text-black leading-tight`}
             >
               Smart Investment
               <br />
@@ -119,18 +116,16 @@ export default function Home() {
           ) : (
             <div className={`relative ${isMobile ? "mt-8" : ""}`}>
               <div
-                className={`bg-white/30 rounded-lg shadow-xl overflow-hidden ${
-                  isMobile ? "w-full h-[400px]" : "w-[900px] h-[650px]"
-                }`}
+                className={`bg-white/30 rounded-lg shadow-xl overflow-hidden ${isMobile ? "w-full h-[400px]" : "w-[900px] h-[650px]"
+                  }`}
               >
                 {/* Dashboard Header */}
 
                 {/* Dashboard Sidebar */}
                 <div className={`flex h-full ${isMobile ? "flex-col" : ""}`}>
                   <div
-                    className={`${
-                      isMobile ? "w-full h-auto" : "w-40"
-                    } bg-[#D0F9ED] p-2 space-y-1`}
+                    className={`${isMobile ? "w-full h-auto" : "w-40"
+                      } bg-[#D0F9ED] p-2 space-y-1`}
                   >
                     <div className="p-4 border-b flex items-center gap-2">
                       <div className="h-5 w-5 bg-white rounded-full"></div>
@@ -251,16 +246,14 @@ export default function Home() {
                   {/* Dashboard Main Content */}
                   <div className="flex-1 p-4">
                     <div
-                      className={`${
-                        isMobile ? "w-full" : "ml-auto"
-                      } relative mb-5 mt-5`}
+                      className={`${isMobile ? "w-full" : "ml-auto"
+                        } relative mb-5 mt-5`}
                     >
                       <input
                         type="text"
                         placeholder="Search"
-                        className={`pl-8 pr-4 py-1 text-sm border-gray border rounded-md ${
-                          isMobile ? "w-full" : "w-[400px]"
-                        } bg-white`}
+                        className={`pl-8 pr-4 py-1 text-sm border-gray border rounded-md ${isMobile ? "w-full" : "w-[400px]"
+                          } bg-white`}
                         disabled
                       />
                       <svg
@@ -282,9 +275,8 @@ export default function Home() {
                     </div>
 
                     <div
-                      className={`bg-white/90 rounded-md border p-5 mb-5 ${
-                        isMobile ? "flex flex-col" : "flex flex-row"
-                      }`}
+                      className={`bg-white/90 rounded-md border p-5 mb-5 ${isMobile ? "flex flex-col" : "flex flex-row"
+                        }`}
                     >
                       {/* Portfolio Value */}
                       <div className="mb-4 mr-16">
@@ -318,9 +310,8 @@ export default function Home() {
 
                       {/* Asset Allocation */}
                       <div
-                        className={`bg-white/50 rounded-md ${
-                          isMobile ? "w-full mt-4" : "w-[400px]"
-                        } border p-10`}
+                        className={`bg-white/50 rounded-md ${isMobile ? "w-full mt-4" : "w-[400px]"
+                          } border p-10`}
                       >
                         <div className="mb-1">
                           <h3 className="text-base font-medium">
@@ -392,9 +383,8 @@ export default function Home() {
 
                     {/* Bottom Cards */}
                     <div
-                      className={`grid ${
-                        isMobile ? "grid-cols-1" : "grid-cols-2"
-                      } gap-4`}
+                      className={`grid ${isMobile ? "grid-cols-1" : "grid-cols-2"
+                        } gap-4`}
                     >
                       {/* Your Assets */}
                       <div className="bg-white/50 rounded-md border p-4">
@@ -403,11 +393,10 @@ export default function Home() {
                         </h3>
                         {/* Asset Item */}
                         <div
-                          className={`${
-                            isMobile
-                              ? "flex flex-col gap-2 border-b pb-2 mb-2"
-                              : "flex items-center justify-between"
-                          } py-1 text-xs`}
+                          className={`${isMobile
+                            ? "flex flex-col gap-2 border-b pb-2 mb-2"
+                            : "flex items-center justify-between"
+                            } py-1 text-xs`}
                         >
                           <div className="flex flex-col">
                             <div className="font-medium">AMD</div>
@@ -416,11 +405,10 @@ export default function Home() {
                             </div>
                           </div>
                           <div
-                            className={`${
-                              isMobile
-                                ? "flex justify-between"
-                                : "flex items-center gap-2"
-                            }`}
+                            className={`${isMobile
+                              ? "flex justify-between"
+                              : "flex items-center gap-2"
+                              }`}
                           >
                             <div className="h-6 w-12 bg-gray-100 rounded-sm">
                               <svg
@@ -448,22 +436,20 @@ export default function Home() {
 
                         {/* Asset Item */}
                         <div
-                          className={`${
-                            isMobile
-                              ? "flex flex-col gap-2 border-b pb-2 mb-2"
-                              : "flex items-center justify-between"
-                          } py-1 text-xs`}
+                          className={`${isMobile
+                            ? "flex flex-col gap-2 border-b pb-2 mb-2"
+                            : "flex items-center justify-between"
+                            } py-1 text-xs`}
                         >
                           <div className="flex flex-col">
                             <div className="font-medium">AAPL</div>
                             <div className="text-gray-500">Apple Inc.</div>
                           </div>
                           <div
-                            className={`${
-                              isMobile
-                                ? "flex justify-between"
-                                : "flex items-center gap-2"
-                            }`}
+                            className={`${isMobile
+                              ? "flex justify-between"
+                              : "flex items-center gap-2"
+                              }`}
                           >
                             <div className="h-6 w-12 bg-gray-100 rounded-sm">
                               <svg
@@ -491,11 +477,10 @@ export default function Home() {
 
                         {/* Asset Item */}
                         <div
-                          className={`${
-                            isMobile
-                              ? "flex flex-col gap-2"
-                              : "flex items-center justify-between"
-                          } py-1 text-xs`}
+                          className={`${isMobile
+                            ? "flex flex-col gap-2"
+                            : "flex items-center justify-between"
+                            } py-1 text-xs`}
                         >
                           <div className="flex flex-col">
                             <div className="font-medium">MSFT</div>
@@ -504,11 +489,10 @@ export default function Home() {
                             </div>
                           </div>
                           <div
-                            className={`${
-                              isMobile
-                                ? "flex justify-between"
-                                : "flex items-center gap-2"
-                            }`}
+                            className={`${isMobile
+                              ? "flex justify-between"
+                              : "flex items-center gap-2"
+                              }`}
                           >
                             <div className="h-6 w-12 bg-gray-100 rounded-sm">
                               <svg
@@ -701,11 +685,10 @@ export default function Home() {
       <footer className="bg-[#0C2E24] text-white py-12">
         <div className="container mx-auto px-6">
           <div
-            className={`${
-              isMobile
-                ? "flex flex-col gap-8"
-                : "flex justify-between items-center"
-            }`}
+            className={`${isMobile
+              ? "flex flex-col gap-8"
+              : "flex justify-between items-center"
+              }`}
           >
             <div>
               <h3 className="text-xl font-bold mb-2">InvestSmart AI</h3>
@@ -715,9 +698,8 @@ export default function Home() {
             </div>
 
             <div
-              className={`${
-                isMobile ? "grid grid-cols-2 gap-6" : "flex gap-8"
-              }`}
+              className={`${isMobile ? "grid grid-cols-2 gap-6" : "flex gap-8"
+                }`}
             >
               <div>
                 <h4 className="font-medium mb-3">Product</h4>
@@ -765,11 +747,10 @@ export default function Home() {
           </div>
 
           <div
-            className={`mt-12 pt-6 border-t border-white/10 ${
-              isMobile
-                ? "flex flex-col gap-4"
-                : "flex justify-between items-center"
-            }`}
+            className={`mt-12 pt-6 border-t border-white/10 ${isMobile
+              ? "flex flex-col gap-4"
+              : "flex justify-between items-center"
+              }`}
           >
             <p className="text-white/60 text-sm">
               &copy; {new Date().getFullYear()} InvestSmart AI. All rights
