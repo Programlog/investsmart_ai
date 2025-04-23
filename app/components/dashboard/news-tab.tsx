@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Share2, ExternalLink, Clock, RefreshCw } from "lucide-react"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import Image from 'next/image'
 
 type NewsArticle = {
   id: string
@@ -244,7 +245,7 @@ export default function NewsTab() {
                 <div className="md:flex">
                   {article.image && (
                     <div className="md:w-1/3 h-48 md:h-auto">
-                      <img
+                      <Image
                         src={article.image || "/placeholder.svg"}
                         alt={article.title}
                         className="w-full h-full object-cover"
@@ -327,7 +328,7 @@ export default function NewsTab() {
 
           {selectedArticle?.image && (
             <div className="w-full h-64 mb-4">
-              <img
+              <Image
                 src={selectedArticle.image || "/placeholder.svg"}
                 alt={selectedArticle.title}
                 className="w-full h-full object-cover rounded-md"

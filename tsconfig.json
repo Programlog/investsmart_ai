@@ -3,8 +3,7 @@
     "baseUrl": ".",
     "paths": {
       "@/*": [
-        "./app/*",
-        "."
+        "./app/*"
       ]
     },
     "target": "ES2017",
@@ -14,8 +13,8 @@
       "esnext"
     ],
     "allowJs": true,
-    "skipLibCheck": true,
-    "strict": false,
+    "skipLibCheck": false,
+    "strict": true,
     "noEmit": true,
     "incremental": true,
     "module": "ESNext",
@@ -32,12 +31,11 @@
     "strictNullChecks": true
   },
   "include": [
-    "next-env.d.ts",
     ".next/types/**/*.ts",
     "**/*.ts",
-    "**/*.tsx",
+    "**/*.tsx"
   ],
   "exclude": [
     "node_modules"
-  ],
+  ]
 }
