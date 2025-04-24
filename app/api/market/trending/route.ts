@@ -75,7 +75,6 @@ export async function GET() {
     }
 }
 
-// Helper function to format volume (e.g., 1.5M, 450K)
 function formatVolume(volume: number): string {
     if (volume >= 1_000_000) {
         return `${(volume / 1_000_000).toFixed(1)}M`
