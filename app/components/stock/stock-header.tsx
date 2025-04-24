@@ -6,13 +6,11 @@ import { Button } from "@/components/ui/button"
 import { Star, ArrowUpRight, ArrowDownRight, Info, Loader2 } from "lucide-react"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 
-interface QuoteData {
+// Update interface to match latest bar data structure
+interface LatestBarData {
     symbol: string
-    askPrice: number | null
-    bidPrice: number | null
-    price: number | null
-    timestamp: string
-    tape?: string // Add tape to the interface
+    close: number | null
+    timestamp: string | null
 }
 
 interface StaticStockData {
@@ -25,49 +23,51 @@ interface StaticStockData {
 }
 
 export default function StockHeader({ data }: { data: StaticStockData }) {
-    const [quoteData, setQuoteData] = useState<QuoteData | null>(null)
+    // Rename state to reflect latest bar data
+    const [latestBarData, setLatestBarData] = useState<LatestBarData | null>(null)
     const [isLoading, setIsLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
     const isPositiveChange = data.change >= 0
 
-    // Tape mapping for display
-    const tapeLabels: Record<string, string> = {
-        A: "New York Stock Exchange)",
-        B: "NYSE Arca, Bats, IEX or other regional exchanges ",
-        C: "NASDAQ",
-        O: "Over-the-counter",
-    }
     useEffect(() => {
         if (!data.symbol) return
 
-        const fetchQuote = async () => {
+        // Rename fetch function
+        const fetchLatestBarData = async () => {
             setError(null)
             try {
-                const response = await fetch(`/api/market/stock?symbol=${data.symbol}&type=quote`)
+                // Add type=latestBar to the API request URL
+                const response = await fetch(`/api/market/stock?symbol=${data.symbol}&type=latestBar`)
                 if (!response.ok) {
                     const errorData = await response.json().catch(() => ({}))
-                    throw new Error(errorData.error || `Failed to fetch quote (${response.status})`)
+                    throw new Error(errorData.error || `Failed to fetch latest bar data (${response.status})`)
                 }
                 const result = await response.json()
-                if (!result.quote || result.quote.price === undefined) {
-                    throw new Error("Invalid quote data received")
+                // Expect data under the 'latestBar' key
+                if (!result.latestBar || result.latestBar.close === undefined || result.latestBar.timestamp === undefined) {
+                    throw new Error("Invalid latest bar data received")
                 }
-                setQuoteData(result.quote)
+                // Set the latestBarData state
+                setLatestBarData(result.latestBar)
             } catch (err: any) {
                 setError(err.message)
-                setQuoteData(null)
+                // Clear data on error
+                setLatestBarData(null)
             } finally {
+                // Only set loading to false on the initial load
                 if (isLoading) setIsLoading(false)
             }
         }
 
-        fetchQuote()
-        const intervalId = setInterval(fetchQuote, 60000) // Refresh every 60 seconds
+        fetchLatestBarData()
+        const intervalId = setInterval(fetchLatestBarData, 60000) // Refresh every 60 seconds
 
         return () => clearInterval(intervalId)
+        // Keep isLoading in dependency array for initial load logic
     }, [data.symbol, isLoading])
 
-    const formatTimestamp = (isoTimestamp?: string) => {
+    // Update formatTimestamp to accept null
+    const formatTimestamp = (isoTimestamp?: string | null) => {
         if (!isoTimestamp) return "N/A"
         try {
             return new Date(isoTimestamp).toLocaleTimeString("en-US", {
@@ -84,10 +84,9 @@ export default function StockHeader({ data }: { data: StaticStockData }) {
     return (
         <div className="space-y-4">
             <div className="flex flex-col space-y-1">
+                {/* Remove tape display, use static data */}
                 <div className="text-sm text-muted-foreground">
-                    {quoteData?.tape && tapeLabels[quoteData.tape]
-                        ? tapeLabels[quoteData.tape]
-                        : `${data.exchange} - ${data.exchange} Real Time Price • ${data.currency}`}
+                    {`${data.exchange} • ${data.currency}`}
                 </div>
                 <div className="flex flex-wrap items-center gap-3">
                     <h1 className="text-3xl font-bold">
@@ -111,11 +110,13 @@ export default function StockHeader({ data }: { data: StaticStockData }) {
                             <Loader2 className="h-10 w-10 animate-spin text-muted-foreground" />
                         ) : error ? (
                             <span className="text-4xl font-bold text-red-600">Error</span>
-                        ) : quoteData?.price !== null && quoteData?.price !== undefined ? (
-                            <span className="text-4xl font-bold">{quoteData.price.toFixed(2)}</span>
-                        ) : (
-                            <span className="text-4xl font-bold text-muted-foreground">N/A</span>
-                        )}
+                        ) : // Use latestBarData.close for price display
+                            latestBarData?.close !== null && latestBarData?.close !== undefined ? (
+                                <span className="text-4xl font-bold">{latestBarData.close.toFixed(2)}</span>
+                            ) : (
+                                <span className="text-4xl font-bold text-muted-foreground">N/A</span>
+                            )}
+                        {/* Keep the change display as it comes from static data */}
                         {!isLoading && !error && (
                             <div className={`ml-3 flex items-center text-lg ${isPositiveChange ? "text-green-600" : "text-red-600"}`}>
                                 {isPositiveChange ? (
@@ -136,10 +137,11 @@ export default function StockHeader({ data }: { data: StaticStockData }) {
                     </div>
                     <p className="text-sm text-muted-foreground mt-1">
                         {isLoading
-                            ? "Loading latest price..."
+                            ? "Loading latest closing price..." // Update loading text
                             : error
                                 ? `Error: ${error}`
-                                : `Last updated: ${formatTimestamp(quoteData?.timestamp)}`}
+                                // Use latestBarData.timestamp for update time
+                                : `Closing price as of: ${formatTimestamp(latestBarData?.timestamp)}`}
                     </p>
                 </div>
             </div>
