@@ -28,7 +28,6 @@ export async function GET() {
     }
 
     try {
-        // Fetch most active stocks from Alpaca
         const response = await fetch(
             `${ALPACA_BASE_URL}/v1beta1/screener/stocks/most-actives`,
             {
@@ -36,7 +35,7 @@ export async function GET() {
                     "APCA-API-KEY-ID": ALPACA_API_KEY,
                     "APCA-API-SECRET-KEY": ALPACA_SECRET_KEY,
                 },
-                cache: "no-store", // Disable caching to always get fresh data
+                next: { revalidate: 10800 }, // Cache for 3 hours
             }
         )
 
