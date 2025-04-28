@@ -1,8 +1,10 @@
 "use client"
 
 import type React from "react"
-
 import { useState, useRef, useEffect } from "react"
+import { useSelector, useDispatch } from "react-redux"
+import { addMessage, setMessages, resetConversation, AssistantMessage } from "@/store/assistantSlice"
+import type { RootState } from "@/store/store"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -11,22 +13,9 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Send, RefreshCw, Sparkles } from "lucide-react"
 import { cn } from "@/lib/utils"
 
-type Message = {
-  id: string
-  content: string
-  role: "user" | "assistant"
-  timestamp: Date
-}
-
 export default function AssistantTab() {
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: "1",
-      content: "Hello! I'm your AI investment assistant. How can I help you with your investment journey today?",
-      role: "assistant",
-      timestamp: new Date(),
-    },
-  ])
+  const dispatch = useDispatch()
+  const messages = useSelector((state: RootState) => state.assistant.messages)
   const [input, setInput] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const [isRegenerating, setIsRegenerating] = useState(false)
@@ -35,83 +24,64 @@ export default function AssistantTab() {
   const promptInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
-    scrollToBottom()
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
   }, [messages])
 
   useEffect(() => {
     const timer = setTimeout(() => {
       promptInputRef.current?.focus()
     }, 50)
-
     return () => clearTimeout(timer)
   }, [])
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
-  }
-
   const handleSendMessage = async () => {
     if (!input.trim()) return
-
-    const userMessage: Message = {
+    const userMessage: AssistantMessage = {
       id: Date.now().toString(),
       content: input,
       role: "user",
-      timestamp: new Date(),
+      timestamp: new Date().toISOString(),
     }
-
-    const assistantMessage: Message = {
+    const assistantMessage: AssistantMessage = {
       id: `ai-${Date.now()}`,
       content: "",
       role: "assistant",
-      timestamp: new Date(),
-    };
-
-    setMessages((prev) => [...prev, userMessage, assistantMessage]);
+      timestamp: new Date().toISOString(),
+    }
+    dispatch(addMessage(userMessage))
+    dispatch(addMessage(assistantMessage))
     setInput("")
     setIsLoading(true)
     setError(null)
-
     try {
-      const response = await fetch('/api/ai', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt: input })
-      });
-
-      if (!response.ok) throw new Error('API request failed');
-
-      const reader = response.body?.getReader();
-      const decoder = new TextDecoder();
-      let done = false;
-
+      const response = await fetch("/api/ai", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt: input }),
+      })
+      if (!response.ok) throw new Error("API request failed")
+      const reader = response.body?.getReader()
+      const decoder = new TextDecoder()
+      let done = false
+      let aiContent = ""
       while (!done && reader) {
-        const { value, done: readDone } = await reader.read();
-        done = readDone;
-        const chunk = decoder.decode(value);
-        setMessages(prev => {
-          const last = prev[prev.length - 1];
-          if (last.id.startsWith(`ai-`)) {
-            return [...prev.slice(0, -1), {
-              ...last,
-              content: last.content + chunk
-            }];
-          }
-          return prev;
-        });
+        const { value, done: readDone } = await reader.read()
+        done = readDone
+        const chunk = decoder.decode(value)
+        aiContent += chunk
+        dispatch(setMessages([
+          ...messages,
+          userMessage,
+          { ...assistantMessage, content: aiContent },
+        ]))
       }
-
     } catch (error) {
-      console.error('Chat error:', error)
       setError(error instanceof Error ? error : new Error("Unknown Error"))
-
-      setMessages((prev) =>
-        prev.map(msg =>
-          msg.id === assistantMessage.id
-            ? { ...msg, content: 'Sorry, I encountered an error. Please try again' }
-            : msg
-        )
-      );
+      dispatch(setMessages([
+        ...messages,
+        userMessage,
+        { ...assistantMessage, content: "Sorry, I encountered an error. Please try again" },
+      ]))
     } finally {
       setIsLoading(false)
       setTimeout(() => {
@@ -129,24 +99,21 @@ export default function AssistantTab() {
 
   const handleRegenerateProfile = async () => {
     setIsRegenerating(true)
-
-    try {
-      setTimeout(() => {
-        const assistantMessage: Message = {
-          id: Date.now().toString(),
-          content:
-            "I've analyzed your questionnaire responses and investment history. Based on your moderate risk tolerance and long-term goals, I recommend a balanced portfolio with 60% stocks, 30% bonds, and 10% cash or cash equivalents. This allocation provides growth potential while maintaining stability. Would you like me to explain any part of this recommendation in more detail?",
-          role: "assistant",
-          timestamp: new Date(),
-        }
-
-        setMessages((prev) => [...prev, assistantMessage])
-        setIsRegenerating(false)
-      }, 2000)
-    } catch (error) {
-      console.error("Error regenerating profile:", error)
+    setTimeout(() => {
+      const assistantMessage: AssistantMessage = {
+        id: Date.now().toString(),
+        content:
+          "I've analyzed your questionnaire responses and investment history. Based on your moderate risk tolerance and long-term goals, I recommend a balanced portfolio with 60% stocks, 30% bonds, and 10% cash or cash equivalents. This allocation provides growth potential while maintaining stability. Would you like me to explain any part of this recommendation in more detail?",
+        role: "assistant",
+        timestamp: new Date().toISOString(),
+      }
+      dispatch(addMessage(assistantMessage))
       setIsRegenerating(false)
-    }
+    }, 2000)
+  }
+
+  const handleResetConversation = () => {
+    dispatch(resetConversation())
   }
 
   const quickActions = [
@@ -184,7 +151,7 @@ export default function AssistantTab() {
           </CardHeader>
           <ScrollArea className="flex-1 p-4">
             <div className="space-y-4">
-              {messages.map((message) => (
+              {messages.map((message: AssistantMessage) => (
                 <div
                   key={message.id}
                   className={cn("flex", {
@@ -245,6 +212,10 @@ export default function AssistantTab() {
                   <Send className="h-4 w-4" />
                 )}
                 <span className="sr-only">Send</span>
+              </Button>
+              <Button size="icon" onClick={handleResetConversation} disabled={isLoading}>
+                <RefreshCw className="h-4 w-4" />
+                <span className="sr-only">Reset</span>
               </Button>
             </div>
           </div>

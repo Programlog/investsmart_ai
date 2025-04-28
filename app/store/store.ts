@@ -1,11 +1,13 @@
 import { configureStore } from "@reduxjs/toolkit";
 import searchReducer from "./searchSlice";
+import assistantReducer from "./assistantSlice";
 // Import other reducers here if you have them
 
 export const makeStore = () => {
     return configureStore({
         reducer: {
             search: searchReducer,
+            assistant: assistantReducer,
             // Add other reducers here
         },
     });
