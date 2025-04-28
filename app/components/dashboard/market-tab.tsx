@@ -448,8 +448,11 @@ export default function MarketTab() {
               <div className="text-center text-muted-foreground text-sm py-4">No news available.</div>
             ) : (
               <div
-                className="space-y-4 max-h-[420px] overflow-y-auto pr-2 -mr-2 transition-all scrollbar-thin scrollbar-thumb-muted-foreground/40 scrollbar-track-transparent hover:scrollbar-thumb-muted-foreground/70"
-                style={{ scrollbarGutter: "stable" }}
+                className="space-y-4 max-h-[420px] overflow-y-auto pr-2 transition-all scrollbar-thin scrollbar-thumb-muted-foreground/40 scrollbar-track-transparent hover:scrollbar-thumb-muted-foreground/70"
+                style={{
+                  scrollbarWidth: "thin",
+                  scrollbarColor: "rgba(107,114,128,0.4) transparent",
+                }}
               >
                 {marketNews.slice(0, 10).map((item: NewsItem) => (
                   <div key={item.id} className="border-b pb-3 last:border-0">
