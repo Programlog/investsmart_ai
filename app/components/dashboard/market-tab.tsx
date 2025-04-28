@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useMemo, useCallback } from "react"
+import useSWR from "swr"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -107,176 +108,66 @@ const formatSession = (session: string): string => {
   }
 }
 
+const fetcher = (url: string) => fetch(url).then(res => res.json())
+
 export default function MarketTab() {
   const [isInitialLoading, setIsInitialLoading] = useState(true)
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [marketIndices, setMarketIndices] = useState<MarketIndex[]>([])
-  const [trendingAssets, setTrendingAssets] = useState<TrendingAsset[]>([])
-  const [marketNews, setMarketNews] = useState<NewsItem[]>([])
-  const [marketStatus, setMarketStatus] = useState<MarketStatus | null>(null)
-  const [indexQuotes, setIndexQuotes] = useState<Record<string, any>>({})
-  const [lineChartData, setLineChartData] = useState<{ date: string; close: number }[]>([])
-  const [marketCommentary, setMarketCommentary] = useState<string>("")
   const [selectedIndex, setSelectedIndex] = useState<string | null>(null)
-  const [trendingAssetsLoading, setTrendingAssetsLoading] = useState(true)
-  const [newsLoading, setNewsLoading] = useState(true)
-  const [marketStatusLoading, setMarketStatusLoading] = useState(true)
-  const [indexQuotesLoading, setIndexQuotesLoading] = useState(true)
-  const [lineChartLoading, setLineChartLoading] = useState(false)
   const [isCommentaryLoading, setIsCommentaryLoading] = useState(false)
-  const [trendingAssetsError, setTrendingAssetsError] = useState<string | null>(null)
-  const [newsError, setNewsError] = useState<string | null>(null)
-  const [marketStatusError, setMarketStatusError] = useState<string | null>(null)
-  const [indexQuotesError, setIndexQuotesError] = useState<string | null>(null)
-  const [lineChartError, setLineChartError] = useState<string | null>(null)
   const [commentaryError, setCommentaryError] = useState<string | null>(null)
+  const [marketCommentary, setMarketCommentary] = useState<string>("")
 
+  // Persist selectedIndex in localStorage for state retention
   useEffect(() => {
-    const timer = setTimeout(() => {
-      const indices: MarketIndex[] = [
-        { id: "sp500", name: "S&P 500", value: 5123.45, change: 23.45, changePercent: 0.46 },
-        { id: "dow", name: "Dow Jones", value: 38765.32, change: -125.68, changePercent: -0.32 },
-        { id: "nasdaq", name: "NASDAQ", value: 16234.78, change: 78.92, changePercent: 0.49 },
-        { id: "russell", name: "Russell 2000", value: 2045.67, change: 12.34, changePercent: 0.61 },
-      ]
-      setMarketIndices(indices)
-      if (!selectedIndex) {
-        setSelectedIndex(indices[0].id)
-      }
-    }, 500)
-    return () => clearTimeout(timer)
+    const stored = localStorage.getItem("market_selected_index")
+    if (stored) setSelectedIndex(stored)
+  }, [])
+  useEffect(() => {
+    if (selectedIndex) localStorage.setItem("market_selected_index", selectedIndex)
   }, [selectedIndex])
 
+  // Use SWR for all API data fetching and caching
+  const { data: trendingAssets, isLoading: trendingAssetsLoading, error: trendingAssetsError } = useSWR(
+    "/api/market/trending",
+    fetcher,
+    { revalidateOnFocus: false }
+  )
+  const { data: marketNews, isLoading: newsLoading, error: newsError } = useSWR(
+    "/api/market/news",
+    fetcher,
+    { revalidateOnFocus: false }
+  )
+  const { data: marketStatus, isLoading: marketStatusLoading, error: marketStatusError } = useSWR(
+    "/api/market/status",
+    fetcher,
+    { revalidateOnFocus: false }
+  )
+  const { data: indexQuotes, isLoading: indexQuotesLoading, error: indexQuotesError } = useSWR(
+    "/api/market/index-quote",
+    fetcher,
+    { revalidateOnFocus: false }
+  )
+  // Chart data depends on selectedIndex
+  const chartSymbol = selectedIndex ? SYMBOL_MAP_ALPHA_VANTAGE[selectedIndex as keyof typeof SYMBOL_MAP_ALPHA_VANTAGE] || "SPY" : "SPY"
+  const { data: lineChartData, isLoading: lineChartLoading, error: lineChartError } = useSWR(
+    selectedIndex ? `/api/market/daily?symbol=${chartSymbol}` : null,
+    fetcher,
+    { revalidateOnFocus: false }
+  )
+
+  // Market indices are static for now, but could be fetched with SWR if needed
   useEffect(() => {
-    const fetchTrendingAssets = async () => {
-      setTrendingAssetsLoading(true)
-      setTrendingAssetsError(null)
-      try {
-        const res = await fetch("/api/market/trending")
-        if (!res.ok) throw new Error(`API Error: ${res.statusText}`)
-        const data = await res.json()
-        const formattedAssets: TrendingAsset[] = data.slice(0, 5).map((item: any, index: number) => ({
-          id: item.symbol || `trend-${index}`,
-          symbol: item.symbol || "N/A",
-          name: item.name || "Unknown Asset",
-          price: 0,
-          change: 0,
-          changePercent: 0,
-          volume: String(item.volume ?? "0"),
-          sentiment: "neutral",
-        }))
-        setTrendingAssets(formattedAssets)
-      } catch (error) {
-        console.error("Error fetching trending assets:", error)
-        setTrendingAssetsError("Unable to load trending assets.")
-        setTrendingAssets([])
-      } finally {
-        setTrendingAssetsLoading(false)
-      }
-    }
-    fetchTrendingAssets()
+    const indices: MarketIndex[] = [
+      { id: "sp500", name: "S&P 500", value: 5123.45, change: 23.45, changePercent: 0.46 },
+      { id: "dow", name: "Dow Jones", value: 38765.32, change: -125.68, changePercent: -0.32 },
+      { id: "nasdaq", name: "NASDAQ", value: 16234.78, change: 78.92, changePercent: 0.49 },
+      { id: "russell", name: "Russell 2000", value: 2045.67, change: 12.34, changePercent: 0.61 },
+    ]
+    setMarketIndices(indices)
+    if (!selectedIndex) setSelectedIndex(indices[0].id)
   }, [])
-
-  useEffect(() => {
-    const fetchNews = async () => {
-      setNewsLoading(true)
-      setNewsError(null)
-      try {
-        const res = await fetch("/api/market/news")
-        if (!res.ok) throw new Error(`API Error: ${res.statusText}`)
-        const news = await res.json()
-        if (Array.isArray(news)) {
-          setMarketNews(news)
-        } else {
-          throw new Error("Invalid news data format received")
-        }
-      } catch (error) {
-        console.error("Error fetching news:", error)
-        setNewsError("Unable to load market news.")
-        setMarketNews([])
-      } finally {
-        setNewsLoading(false)
-      }
-    }
-    fetchNews()
-  }, [])
-
-  useEffect(() => {
-    const fetchMarketStatus = async () => {
-      setMarketStatusLoading(true)
-      setMarketStatusError(null)
-      try {
-        const res = await fetch("/api/market/status")
-        if (!res.ok) throw new Error(`API Error: ${res.statusText}`)
-        const data = await res.json()
-        setMarketStatus(data)
-      } catch (error) {
-        console.error("Error fetching market status:", error)
-        setMarketStatusError("Unable to load market status.")
-        setMarketStatus(null)
-      } finally {
-        setMarketStatusLoading(false)
-      }
-    }
-    fetchMarketStatus()
-  }, [])
-
-  useEffect(() => {
-    let isMounted = true
-    const fetchIndexQuotes = async () => {
-      setIndexQuotesLoading(true)
-      setIndexQuotesError(null)
-      try {
-        const res = await fetch("/api/market/index-quote")
-        if (!res.ok) throw new Error(`API Error: ${res.statusText}`)
-        const data = await res.json()
-        if (isMounted) {
-          setIndexQuotes(data)
-        }
-      } catch (error) {
-        console.error("Error fetching index quotes:", error)
-        if (isMounted) {
-          setIndexQuotesError("Unable to load real-time index quotes.")
-          setIndexQuotes({})
-        }
-      } finally {
-        if (isMounted) {
-          setIndexQuotesLoading(false)
-        }
-      }
-    }
-    fetchIndexQuotes()
-    return () => {
-      isMounted = false
-    }
-  }, [])
-
-  useEffect(() => {
-    if (!selectedIndex) return
-
-    const fetchChartData = async () => {
-      const symbol = SYMBOL_MAP_ALPHA_VANTAGE[selectedIndex as keyof typeof SYMBOL_MAP_ALPHA_VANTAGE] || "SPY"
-      setLineChartLoading(true)
-      setLineChartError(null)
-      try {
-        const res = await fetch(`/api/market/daily?symbol=${symbol}`)
-        const data = await res.json()
-        if (!res.ok || data?.error) throw new Error(data?.error || `API Error: ${res.statusText}`)
-        if (Array.isArray(data) && data.every(item => typeof item.date === "string" && typeof item.close === "number")) {
-          setLineChartData(data)
-        } else {
-          throw new Error("Invalid chart data format received")
-        }
-      } catch (err) {
-        console.error("Error fetching chart data:", err)
-        setLineChartError((err as Error).message || "Unable to load chart data.")
-        setLineChartData([])
-      } finally {
-        setLineChartLoading(false)
-      }
-    }
-    fetchChartData()
-  }, [selectedIndex])
 
   useEffect(() => {
     if (
@@ -291,14 +182,14 @@ export default function MarketTab() {
   }, [marketIndices.length, indexQuotesLoading, trendingAssetsLoading, newsLoading, marketStatusLoading])
 
   const updateMarketCommentary = useCallback(async () => {
-    if (isInitialLoading || trendingAssetsLoading || !marketIndices.length || !trendingAssets.length) {
+    if (isInitialLoading || trendingAssetsLoading || !marketIndices.length || !trendingAssets?.length) {
       return
     }
 
     setIsCommentaryLoading(true)
     setCommentaryError(null)
     try {
-      const commentaryAssets = trendingAssets.map((asset) => ({
+      const commentaryAssets = trendingAssets.map((asset: TrendingAsset) => ({
         ...asset,
         price: asset.price ?? 0,
         change: asset.change ?? 0,
@@ -327,7 +218,6 @@ export default function MarketTab() {
 
   const handleRefresh = useCallback(async () => {
     setIsRefreshing(true)
-    setTrendingAssetsLoading(true)
 
     await new Promise((resolve) => setTimeout(resolve, 1000))
 
@@ -339,29 +229,6 @@ export default function MarketTab() {
         changePercent: index.changePercent * (1 + (Math.random() * 0.1 - 0.05)),
       })),
     )
-
-    try {
-      const res = await fetch("/api/market/trending")
-      if (!res.ok) throw new Error(`API Error: ${res.statusText}`)
-      const data = await res.json()
-      const formattedAssets: TrendingAsset[] = data.slice(0, 5).map((item: any, index: number) => ({
-        id: item.symbol || `trend-${index}`,
-        symbol: item.symbol || "N/A",
-        name: item.name || "Unknown Asset",
-        price: 0,
-        change: 0,
-        changePercent: 0,
-        volume: String(item.volume ?? "0"),
-        sentiment: "neutral",
-      }))
-      setTrendingAssets(formattedAssets)
-      setTrendingAssetsError(null)
-    } catch (error) {
-      console.error("Error refreshing trending assets:", error)
-      setTrendingAssetsError("Unable to refresh trending assets.")
-    } finally {
-      setTrendingAssetsLoading(false)
-    }
 
     setIsRefreshing(false)
   }, [])
@@ -458,7 +325,7 @@ export default function MarketTab() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {marketIndices.map((index) => {
           const symbol = SYMBOL_MAP_FINNHUB[index.id as keyof typeof SYMBOL_MAP_FINNHUB]
-          const quote = !indexQuotesLoading && indexQuotes[symbol] ? indexQuotes[symbol] : null
+          const quote = !indexQuotesLoading && indexQuotes?.[symbol] ? indexQuotes[symbol] : null
           const price = quote?.price ?? index.value
           const change = quote?.change ?? index.change
           const changePercent = quote?.changePercent ?? index.changePercent
@@ -525,7 +392,7 @@ export default function MarketTab() {
               )}
               {lineChartError ? (
                 <div className="flex items-center justify-center h-full text-red-500 text-sm">{lineChartError}</div>
-              ) : lineChartData.length === 0 && !lineChartLoading ? (
+              ) : lineChartData?.length === 0 && !lineChartLoading ? (
                 <div className="flex items-center justify-center h-full text-muted-foreground text-sm">
                   No chart data available.
                 </div>
@@ -577,14 +444,14 @@ export default function MarketTab() {
               </div>
             ) : newsError ? (
               <div className="text-red-500 text-sm py-4 text-center">{newsError}</div>
-            ) : marketNews.length === 0 ? (
+            ) : marketNews?.length === 0 ? (
               <div className="text-center text-muted-foreground text-sm py-4">No news available.</div>
             ) : (
               <div
                 className="space-y-4 max-h-[420px] overflow-y-auto pr-2 -mr-2 transition-all scrollbar-thin scrollbar-thumb-muted-foreground/40 scrollbar-track-transparent hover:scrollbar-thumb-muted-foreground/70"
                 style={{ scrollbarGutter: "stable" }}
               >
-                {marketNews.slice(0, 10).map((item) => (
+                {marketNews.slice(0, 10).map((item: NewsItem) => (
                   <div key={item.id} className="border-b pb-3 last:border-0">
                     <a
                       href={item.url}
@@ -634,14 +501,14 @@ export default function MarketTab() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {trendingAssets.length === 0 ? (
+                  {trendingAssets?.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
                         No trending assets found.
                       </TableCell>
                     </TableRow>
                   ) : (
-                    trendingAssets.map((asset) => (
+                    trendingAssets.map((asset: TrendingAsset) => (
                       <TableRow key={asset.id}>
                         <TableCell className="font-medium">{asset.name}</TableCell>
                         <TableCell className="text-right text-muted-foreground">-</TableCell>
