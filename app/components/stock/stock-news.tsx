@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button"
-import { ExternalLink, Clock, ArrowRight } from "lucide-react"
+import { Clock, ArrowRight } from "lucide-react"
 
 type NewsCategory = "all" | "news" | "press" | "filing"
 

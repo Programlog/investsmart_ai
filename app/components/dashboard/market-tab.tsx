@@ -118,6 +118,7 @@ export default function MarketTab() {
   const [isCommentaryLoading, setIsCommentaryLoading] = useState(false)
   const [commentaryError, setCommentaryError] = useState<string | null>(null)
   const [marketCommentary, setMarketCommentary] = useState<string>("")
+  const [showAllTrending, setShowAllTrending] = useState(false)
 
   // Persist selectedIndex in localStorage for state retention
   useEffect(() => {
@@ -131,6 +132,13 @@ export default function MarketTab() {
   // Use SWR for all API data fetching and caching
   const { data: trendingAssets, isLoading: trendingAssetsLoading, error: trendingAssetsError } = useSWR(
     "/api/market/trending",
+    fetcher,
+    { revalidateOnFocus: false }
+  )
+  // Fetch latest prices for trending assets
+  const trendingSymbols = trendingAssets?.map((a: TrendingAsset) => a.symbol).join(",")
+  const { data: trendingBars, isLoading: trendingBarsLoading, error: trendingBarsError } = useSWR(
+    trendingSymbols ? `/api/market/multi-stock?symbols=${trendingSymbols}` : null,
     fetcher,
     { revalidateOnFocus: false }
   )
@@ -232,6 +240,11 @@ export default function MarketTab() {
 
     setIsRefreshing(false)
   }, [])
+
+  const displayedTrendingAssets = useMemo(() => {
+    if (!trendingAssets) return []
+    return showAllTrending ? trendingAssets : trendingAssets.slice(0, 5)
+  }, [trendingAssets, showAllTrending])
 
   const selectedIndexData = useMemo(
     () => marketIndices.find((index) => index.id === selectedIndex),
@@ -485,14 +498,14 @@ export default function MarketTab() {
           <CardDescription>Most active stocks based on recent activity</CardDescription>
         </CardHeader>
         <CardContent>
-          {trendingAssetsLoading ? (
+          {trendingAssetsLoading || trendingBarsLoading ? (
             <div className="flex justify-center items-center h-40">
               <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent"></div>
             </div>
-          ) : trendingAssetsError ? (
-            <div className="text-red-500 text-sm py-4 text-center">{trendingAssetsError}</div>
+          ) : trendingAssetsError || trendingBarsError ? (
+            <div className="text-red-500 text-sm py-4 text-center">{trendingAssetsError || trendingBarsError}</div>
           ) : (
-            <div className="rounded-md border">
+            <div className="rounded-md border transition-all duration-300">
               <Table>
                 <TableHeader>
                   <TableRow className="bg-muted/50 hover:bg-muted/50">
@@ -504,25 +517,40 @@ export default function MarketTab() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {trendingAssets?.length === 0 ? (
+                  {displayedTrendingAssets?.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
                         No trending assets found.
                       </TableCell>
                     </TableRow>
                   ) : (
-                    trendingAssets.map((asset: TrendingAsset) => (
-                      <TableRow key={asset.id}>
-                        <TableCell className="font-medium">{asset.name}</TableCell>
-                        <TableCell className="text-right text-muted-foreground">-</TableCell>
-                        <TableCell className="text-right text-muted-foreground">-</TableCell>
-                        <TableCell className="text-right">{asset.volume}</TableCell>
-                        <TableCell className="text-center">{getSentimentBadge(asset.sentiment)}</TableCell>
-                      </TableRow>
-                    ))
+                    displayedTrendingAssets.map((asset: TrendingAsset) => {
+                      const bar = trendingBars?.bars?.[asset.symbol]
+                      return (
+                        <TableRow key={asset.id} className="transition-all duration-300">
+                          <TableCell className="font-medium">{asset.name}</TableCell>
+                          <TableCell className="text-right">{bar ? bar.c.toFixed(2) : "-"}</TableCell>
+                          <TableCell className="text-right">{bar ? (bar.c - bar.o >= 0 ? "+" : "") + (bar.c - bar.o).toFixed(2) : "-"}</TableCell>
+                          <TableCell className="text-right">{asset.volume}</TableCell>
+                          <TableCell className="text-center">{getSentimentBadge(asset.sentiment)}</TableCell>
+                        </TableRow>
+                      )
+                    })
                   )}
                 </TableBody>
               </Table>
+              {trendingAssets && trendingAssets.length > 5 && (
+                <div className="flex justify-center mt-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="transition-all duration-200"
+                    onClick={() => setShowAllTrending((v) => !v)}
+                  >
+                    {showAllTrending ? "Show Less" : "Show More"}
+                  </Button>
+                </div>
+              )}
             </div>
           )}
         </CardContent>

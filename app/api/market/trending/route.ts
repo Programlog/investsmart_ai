@@ -29,7 +29,7 @@ export async function GET() {
 
     try {
         const response = await fetch(
-            `${ALPACA_BASE_URL}/v1beta1/screener/stocks/most-actives`,
+            `${ALPACA_BASE_URL}/v1beta1/screener/stocks/most-actives?by=trades`,
             {
                 headers: {
                     "APCA-API-KEY-ID": ALPACA_API_KEY,
