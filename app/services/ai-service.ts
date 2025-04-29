@@ -20,7 +20,7 @@ const chat = model.startChat({
     temperature: 0.0,
     maxOutputTokens: 200,
   },
-  tools: [{ google_search: {} }] as any
+  tools: [{ google_search: {} }] as unknown as object[]
 });
 
 // REAL function

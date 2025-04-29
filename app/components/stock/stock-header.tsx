@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button"
 import { Star, ArrowUpRight, ArrowDownRight, Info, Loader2 } from "lucide-react"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 
-// Update interface to match latest bar data structure
 interface LatestBarData {
     symbol: string
     close: number | null
@@ -23,7 +22,6 @@ interface StaticStockData {
 }
 
 export default function StockHeader({ data }: { data: StaticStockData }) {
-    // Rename state to reflect latest bar data
     const [latestBarData, setLatestBarData] = useState<LatestBarData | null>(null)
     const [isLoading, setIsLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
@@ -32,7 +30,6 @@ export default function StockHeader({ data }: { data: StaticStockData }) {
     useEffect(() => {
         if (!data.symbol) return
 
-        // Rename fetch function
         const fetchLatestBarData = async () => {
             setError(null)
             try {
@@ -47,14 +44,12 @@ export default function StockHeader({ data }: { data: StaticStockData }) {
                 if (!result.latestBar || result.latestBar.close === undefined || result.latestBar.timestamp === undefined) {
                     throw new Error("Invalid latest bar data received")
                 }
-                // Set the latestBarData state
                 setLatestBarData(result.latestBar)
-            } catch (err: any) {
-                setError(err.message)
-                // Clear data on error
-                setLatestBarData(null)
+            } catch (err) {
+                const errorMessage = (err instanceof Error) ? err.message : "An unknown error occurred";
+                setError(errorMessage);
+                setLatestBarData(null);
             } finally {
-                // Only set loading to false on the initial load
                 if (isLoading) setIsLoading(false)
             }
         }
