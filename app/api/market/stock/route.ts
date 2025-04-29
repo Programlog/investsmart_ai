@@ -7,7 +7,7 @@ const ALPACA_SECRET_KEY = process.env.ALPACA_SECRET_KEY
 const AlpacaNewsSchema = z.object({
     news: z.array(
         z.object({
-            id: z.union([z.string(), z.number()]),
+            id: z.number(),
             headline: z.string(),
             source: z.string(),
             summary: z.string(),
@@ -18,9 +18,27 @@ const AlpacaNewsSchema = z.object({
     next_page_token: z.string().optional(),
 })
 
+interface AlpacaNewsItem {
+    id: number;
+    headline: string;
+    source: string;
+    summary: string;
+    created_at: string;
+    url: string;
+}
+
+interface AlpacaBar {
+    t: string; // RFC-3339
+    o: number;
+    h: number;
+    l: number;
+    c: number;
+    v: number;
+}
+
 // Function to fetch the latest bar data
 async function fetchLatestBar(symbol: string) {
-    const url = `https://data.alpaca.markets/v2/stocks/${encodeURIComponent(symbol)}/bars/latest?feed=iex` // Use the latest bar endpoint
+    const url = `https://data.alpaca.markets/v2/stocks/${encodeURIComponent(symbol)}/bars/latest?feed=iex`
     const res = await fetch(url, {
         headers: {
             "APCA-API-KEY-ID": ALPACA_API_KEY || "",
@@ -69,9 +87,10 @@ export async function GET(req: NextRequest) {
         try {
             const latestBar = await fetchLatestBar(symbol)
             return NextResponse.json({ latestBar }) // Return nested under 'latestBar' key
-        } catch (error: any) {
+        } catch (error: unknown) {
+            const message = error instanceof Error ? error.message : "Failed to fetch latest bar"
             console.error(`Error fetching latest bar for ${symbol}:`, error)
-            return NextResponse.json({ error: error.message || "Failed to fetch latest bar" }, { status: 500 })
+            return NextResponse.json({ error: message }, { status: 500 })
         }
     }
 
@@ -96,8 +115,8 @@ export async function GET(req: NextRequest) {
             if (!parsed.success) {
                 return NextResponse.json({ error: "Invalid Alpaca news response" }, { status: 500 })
             }
-            const news = parsed.data.news.map((item) => ({
-                id: String(item.id),
+            const news = parsed.data.news.map((item: AlpacaNewsItem) => ({
+                id: item.id,
                 title: item.headline,
                 source: item.source,
                 summary: item.summary,
@@ -105,13 +124,14 @@ export async function GET(req: NextRequest) {
                 url: item.url,
             }))
             return NextResponse.json({ news })
-        } catch (error: any) {
+        } catch (error: unknown) {
+            const message = error instanceof Error ? error.message : "Failed to fetch news"
             console.error(`Error fetching news for ${symbol}:`, error)
-            return NextResponse.json({ error: error.message || "Failed to fetch news" }, { status: 500 })
+            return NextResponse.json({ error: message }, { status: 500 })
         }
     }
 
-    // --- Existing logic for 'bars' (default if type is not 'latestBar' or 'news') ---
+    // Fetch 'bars' (default if type is not 'latestBar' or 'news')
     const params = new URLSearchParams({
         timeframe,
         limit,
@@ -127,7 +147,7 @@ export async function GET(req: NextRequest) {
                 "APCA-API-KEY-ID": ALPACA_API_KEY || "",
                 "APCA-API-SECRET-KEY": ALPACA_SECRET_KEY || "",
             },
-            cache: "no-store", // Keep bars request uncached for now, or add separate caching
+            next: { revalidate: 15 },
         })
 
         if (!res.ok) {
@@ -137,8 +157,7 @@ export async function GET(req: NextRequest) {
         }
 
         const data = await res.json()
-        // Format: { bars: [{ t, o, h, l, c, v }] }
-        const chartData = (data.bars || []).map((bar: any) => ({
+        const chartData = (data.bars || []).map((bar: AlpacaBar) => ({
             time: bar.t, // ISO8601
             price: bar.c,
             open: bar.o,
@@ -148,8 +167,9 @@ export async function GET(req: NextRequest) {
         }))
 
         return NextResponse.json({ chartData })
-    } catch (error: any) {
+    } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : "Internal server error fetching bars"
         console.error(`Error fetching bars for ${symbol}:`, error)
-        return NextResponse.json({ error: error.message || "Internal server error fetching bars" }, { status: 500 })
+        return NextResponse.json({ error: message }, { status: 500 })
     }
 }

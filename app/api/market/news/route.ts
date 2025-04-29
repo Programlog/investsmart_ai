@@ -1,6 +1,15 @@
 import { NextResponse } from "next/server"
 import { unstable_cache } from "next/cache"
 
+type FinnhubNewsItem = {
+    id?: number;
+    headline: string;
+    source: string;
+    summary: string;
+    datetime: number;
+    url: string;
+};
+
 const getNews = unstable_cache(
     async (apiKey: string) => {
         const res = await fetch(
@@ -9,11 +18,11 @@ const getNews = unstable_cache(
         if (!res.ok) {
             throw new Error("Failed to fetch news")
         }
-        const data = await res.json()
-        return (data as any[])
+        const data: FinnhubNewsItem[] = await res.json()
+        return data
             .slice(0, 10)
             .map((item) => ({
-                id: String(item.id ?? item.datetime),
+                id: item.id,
                 headline: item.headline,
                 source: item.source,
                 summary: item.summary,
@@ -33,7 +42,7 @@ export async function GET() {
     try {
         const news = await getNews(apiKey)
         return NextResponse.json(news)
-    } catch (_) {
+    } catch {
         return NextResponse.json({ error: "Unable to load market news at this time." }, { status: 500 })
     }
 }

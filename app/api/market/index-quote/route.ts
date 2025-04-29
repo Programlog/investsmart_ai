@@ -11,14 +11,21 @@ const fetchIndexQuote = async (symbol: string) => {
     return data && data[0] ? data[0] : null
 }
 
+type IndexQuote = {
+    symbol: string;
+    price: number;
+    volume: number;
+};
+
 export async function GET() {
-    const results: Record<string, any> = {}
+    const results: Record<string, IndexQuote | null> = {}
     for (const symbol of INDEX_SYMBOLS) {
         try {
             const quote = await fetchIndexQuote(symbol)
             if (quote) results[symbol] = quote
-        } catch (_) {
+        } catch {
             results[symbol] = null
+            console.error(`Failed to fetch index quote for ${symbol}`);
         }
     }
     return NextResponse.json(results)

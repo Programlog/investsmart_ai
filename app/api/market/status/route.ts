@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server"
+import { NextResponse } from "next/server"
 import { unstable_cache } from "next/cache"
 
 const getMarketStatus = unstable_cache(
@@ -19,7 +19,7 @@ const getMarketStatus = unstable_cache(
     { revalidate: 60 } // cache for 60 seconds
 )
 
-export async function GET(req: NextRequest) {
+export async function GET() {
     try {
         const apiKey = process.env.FINNHUB_API_KEY
         if (!apiKey) {
@@ -27,7 +27,8 @@ export async function GET(req: NextRequest) {
         }
         const result = await getMarketStatus(apiKey)
         return NextResponse.json(result)
-    } catch (err) {
-        return NextResponse.json({ error: "Unable to load market status" }, { status: 500 })
+    } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred'
+        return NextResponse.json({ error: "Unable to load market status", details: errorMessage }, { status: 500 })
     }
 }

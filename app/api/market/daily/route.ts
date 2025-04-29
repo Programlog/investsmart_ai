@@ -37,7 +37,7 @@ export async function GET(req: NextRequest) {
     try {
         const closes = await fetchDailyCloses(symbol);
         return NextResponse.json(closes);
-    } catch (e: any) {
-        return NextResponse.json({ error: e.message }, { status: 500 });
+    } catch (error: unknown) {
+        return NextResponse.json({ error: error instanceof Error ? error.message : 'Unknown error occurred' }, { status: 500 });
     }
 }

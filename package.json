@@ -1,6 +1,6 @@
 {
   "name": "wallstreet-ai",
-  "version": "0.1.1",
+  "version": "0.2.1",
   "private": true,
   "type": "module",
   "scripts": {
@@ -8,6 +8,7 @@
     "tunnel": "node scripts/ngrok.config.js",
     "dev:tunnel": "concurrently \"pnpm run dev\" \"pnpm run tunnel\"",
     "build": "prisma generate && next build",
+    "dbuild": "next build",
     "start": "next start",
     "lint": "next lint"
   },

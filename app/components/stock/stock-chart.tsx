@@ -8,10 +8,27 @@ import { Settings } from "lucide-react"
 
 type ChartPeriod = "1D" | "5D" | "1M" | "6M" | "YTD" | "1Y" | "5Y" | "All"
 
-export default function StockChart({ data }: { data: any }) {
+interface ChartDatum {
+    time: string
+    price: number
+    open: number
+    high: number
+    low: number
+    volume: number
+}
+
+interface StockChartProps {
+    data: {
+        symbol: string
+        price: number
+        previousClose: number
+    }
+}
+
+export default function StockChart({ data }: StockChartProps) {
     const [activePeriod, setActivePeriod] = useState<ChartPeriod>("1D")
     const [showEvents, setShowEvents] = useState(false)
-    const [chartData, setChartData] = useState<any[]>([])
+    const [chartData, setChartData] = useState<ChartDatum[]>([])
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
 
@@ -31,7 +48,7 @@ export default function StockChart({ data }: { data: any }) {
                 switch (activePeriod) {
                     case "1D": {
                         // Find the most recent weekday (Mon-Fri)
-                        let day = now.getDay()
+                        const day = now.getDay()
                         let offset = 0
                         if (day === 0) offset = -2 // Sunday -> Friday
                         else if (day === 6) offset = -1 // Saturday -> Friday
@@ -91,8 +108,8 @@ export default function StockChart({ data }: { data: any }) {
                 const json = await res.json()
                 if (!res.ok || !json.chartData) throw new Error(json.error || "Failed to load chart data")
                 if (isMounted) setChartData(json.chartData)
-            } catch (err: any) {
-                if (isMounted) setError(err.message || "Error loading chart data")
+            } catch (err) {
+                if (isMounted) setError(err instanceof Error ? err.message : "Error loading chart data")
             } finally {
                 if (isMounted) setLoading(false)
             }
@@ -103,8 +120,8 @@ export default function StockChart({ data }: { data: any }) {
 
     const lastPrice = chartData[chartData.length - 1]?.price || data.price
     const startPrice = chartData[0]?.price || data.previousClose
-    const max = chartData.length > 0 ? Math.max(...chartData.map((d: any) => d.price)) * 1.001 : 0
-    const min = chartData.length > 0 ? Math.min(...chartData.map((d: any) => d.price)) * 0.999 : 0
+    const max = chartData.length > 0 ? Math.max(...chartData.map((d) => d.price)) * 1.001 : 0
+    const min = chartData.length > 0 ? Math.min(...chartData.map((d) => d.price)) * 0.999 : 0
 
     // Select visible data points based on the period
     const visibleData = (() => {
@@ -170,10 +187,10 @@ export default function StockChart({ data }: { data: any }) {
                                     tick={{ fontSize: 12 }}
                                     orientation="right"
                                     tickCount={5}
-                                    tickFormatter={(value) => value.toFixed(2)}
+                                    tickFormatter={(value: number) => value.toFixed(2)}
                                 />
                                 <Tooltip
-                                    formatter={(value: any) => [`$${value}`, "Price"]}
+                                    formatter={(value: number) => [`$${value}`, "Price"]}
                                     labelFormatter={() => ""}
                                     contentStyle={{
                                         borderRadius: "6px",
