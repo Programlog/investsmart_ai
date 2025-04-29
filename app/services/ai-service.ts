@@ -23,29 +23,18 @@ const chat = model.startChat({
   tools: [{ google_search: {} }] as any
 });
 
-let isAwaitingResponse = true;
-
 // REAL function
 export async function generateText(prompt: string, onChunk?: (chunk: string) => void): Promise<string> {
-  isAwaitingResponse = true;
-  try {
-    const result = await chat.sendMessageStream(prompt)
-    let text = "";
+  const result = await chat.sendMessageStream(prompt)
+  let text = "";
 
-    for await (const chunk of result.stream) {
-      const chunkOfText = await chunk.text();
-      text += chunkOfText;
-      onChunk?.(chunkOfText);
-    }
-
-    isAwaitingResponse = false;
-
-    return text;
-  } catch (error: any) {
-    console.log("API error:", geminiApiKey);
-    console.error("Error generating text:", error);
-    throw new Error(error.message);
+  for await (const chunk of result.stream) {
+    const chunkOfText = await chunk.text();
+    text += chunkOfText;
+    onChunk?.(chunkOfText);
   }
+
+  return text;
 }
 
 export async function generateInvestmentProfile(answers: Record<string, string>) {
@@ -68,6 +57,23 @@ export async function generateInvestmentProfile(answers: Record<string, string>)
   }
 }
 
+// Types for market data
+export interface MarketIndex {
+  id: string;
+  name: string;
+  value: number;
+  change: number;
+  changePercent: number;
+}
+
+export interface TrendingAsset {
+  id: string;
+  symbol: string;
+  name: string;
+  price: number;
+  change: number;
+  changePercent: number;
+}
 
 // Function to search for investment terms and concepts
 export async function searchInvestmentTerms(query: string) {
@@ -158,8 +164,8 @@ export async function getMarketData() {
 
 // Function to generate market commentary
 export async function generateMarketCommentary(marketData: {
-  indices: any[];
-  trendingAssets: any[];
+  indices: MarketIndex[];
+  trendingAssets: TrendingAsset[];
 }): Promise<string> {
   const prompt = `
     Based on today's market data:

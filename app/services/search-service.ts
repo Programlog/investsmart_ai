@@ -16,8 +16,23 @@ function categorizeUrl(url: string): ResultCategory {
     return domain ? DOMAIN_CATEGORIES[domain] : "web";
 }
 
+export type SearchResult = {
+    id: string;
+    title: string;
+    snippet: string;
+    url: string;
+    source: ResultCategory;
+};
+
+interface GoogleSearchItem {
+    cacheId?: string;
+    title: string;
+    snippet: string;
+    link: string;
+}
+
 // In-memory cache (replace with Redis for production)
-const cache = new Map<string, { data: any; timestamp: number }>();
+const cache = new Map<string, { data: { results: SearchResult[]; summary: string | null }; timestamp: number }>();
 const CACHE_DURATION = 24 * 60 * 60 * 1000; // 24 hours
 
 export const searchSchema = z.object({
@@ -47,8 +62,9 @@ export async function searchGoogleCustom({ query, filter }: { query: string; fil
     // if (filter === 'definition') params.q = `define ${query}`;
 
     const response = await axios.get(searchUrl, { params });
-    const results =
-        response.data.items?.map((item: any) => ({
+    const items: GoogleSearchItem[] = response.data.items || [];
+    const results: SearchResult[] =
+        items.map((item) => ({
             id: item.cacheId || Math.random().toString(36).substring(7),
             title: item.title,
             snippet: item.snippet,

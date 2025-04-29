@@ -14,14 +14,6 @@ import { Search, ExternalLink, AlertCircle } from "lucide-react"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Skeleton } from "@/components/ui/skeleton"
 
-type SearchResult = {
-  id: string
-  title: string
-  snippet: string
-  url: string
-  source: "article" | "social" | "definition" | "web"
-}
-
 export default function SearchTab() {
   const [searchQuery, setSearchQuery] = useState("")
   const [activeFilter, setActiveFilter] = useState("all")
@@ -178,7 +170,7 @@ export default function SearchTab() {
       {!isSearching && !error && searchResults.length === 0 && !summary && searchQuery && (
         <Card>
           <CardContent className="p-6 text-center">
-            <p className="text-muted-foreground">No results found for "{searchQuery}". Try a different search term or filter.</p>
+            <p className="text-muted-foreground">No results found for &quot;{searchQuery}&quot;. Try a different search term or filter.</p>
           </CardContent>
         </Card>
       )}

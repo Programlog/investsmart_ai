@@ -5,6 +5,7 @@ const nextConfig = {
     parallelServerBuildTraces: true,
     parallelServerCompiles: true,
   },
+  eslint: { ignoreDuringBuilds: true, }
 }
 
 

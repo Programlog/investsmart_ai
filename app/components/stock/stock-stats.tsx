@@ -15,7 +15,7 @@ export default function StockStats({ data }: { data: any }) {
                             <p className="text-base">{data.open.toFixed(2)}</p>
                         </div>
                         <div>
-                            <h3 className="text-sm font-medium text-muted-foreground mb-1">Day's Range</h3>
+                            <h3 className="text-sm font-medium text-muted-foreground mb-1">Day&apos;s Range</h3>
                             <p className="text-base">
                                 {data.dayRange.low.toFixed(2)} - {data.dayRange.high.toFixed(2)}
                             </p>

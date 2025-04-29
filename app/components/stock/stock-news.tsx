@@ -34,7 +34,7 @@ export default function StockNews({ symbol }: { symbol: string }) {
                 const data = await res.json()
                 // Map API response to NewsItem[]
                 setNewsItems(
-                    (data.news || []).map((item: any) => ({
+                    (data.news || []).map((item: NewsItem) => ({
                         id: item.id,
                         title: item.title,
                         source: item.source,

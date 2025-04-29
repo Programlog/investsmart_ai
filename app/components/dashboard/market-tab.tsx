@@ -53,13 +53,6 @@ type NewsItem = {
   url: string
 }
 
-type MarketStatus = {
-  market: string
-  status: "open" | "closed"
-  session: string
-  holiday?: string
-}
-
 const formatTime = (unix: number): string => {
   const date = new Date(unix * 1000)
   return date.toLocaleString(undefined, {
@@ -175,7 +168,7 @@ export default function MarketTab() {
     ]
     setMarketIndices(indices)
     if (!selectedIndex) setSelectedIndex(indices[0].id)
-  }, [])
+  }, [selectedIndex])
 
   useEffect(() => {
     if (
