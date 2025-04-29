@@ -1,5 +1,23 @@
 "use server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { unstable_cache } from "next/cache";
+
+export interface MarketIndex {
+  id: string;
+  name: string;
+  value: number;
+  change: number;
+  changePercent: number;
+}
+
+export interface TrendingAsset {
+  id: string;
+  symbol: string;
+  name: string;
+  price: number;
+  change: number;
+  changePercent: number;
+}
 
 const geminiApiKey = process.env.GEMINI_API_KEY;
 
@@ -23,7 +41,6 @@ const chat = model.startChat({
   tools: [{ google_search: {} }] as unknown as object[]
 });
 
-// REAL function
 export async function generateText(prompt: string, onChunk?: (chunk: string) => void): Promise<string> {
   const result = await chat.sendMessageStream(prompt)
   let text = "";
@@ -49,7 +66,6 @@ export async function generateInvestmentProfile(answers: Record<string, string>)
       Respond in JSON format with keys: type, description, allocation, explanation.
     `;
     const response = await generateText(prompt);
-    // Parse the AI's JSON response
     return JSON.parse(response);
   } catch (error) {
     console.error("Error generating investment profile:", error);
@@ -57,112 +73,6 @@ export async function generateInvestmentProfile(answers: Record<string, string>)
   }
 }
 
-// Types for market data
-export interface MarketIndex {
-  id: string;
-  name: string;
-  value: number;
-  change: number;
-  changePercent: number;
-}
-
-export interface TrendingAsset {
-  id: string;
-  symbol: string;
-  name: string;
-  price: number;
-  change: number;
-  changePercent: number;
-}
-
-// Function to search for investment terms and concepts
-export async function searchInvestmentTerms(query: string) {
-  try {
-    // In a real app, this would call an API to search for investment terms
-    // For demo purposes, we'll simulate a response
-
-    // Simulate API delay
-    await new Promise((resolve) => setTimeout(resolve, 1000))
-
-    // Return mock data
-    return {
-      results: [
-        {
-          id: "1",
-          title: "What is an ETF?",
-          snippet:
-            "Exchange-traded funds (ETFs) are a type of investment fund and exchange-traded product, i.e., they are traded on stock exchanges...",
-          url: "https://example.com/etf-guide",
-          source: "article",
-        },
-        {
-          id: "2",
-          title: query + " Definition",
-          snippet: "A comprehensive explanation of " + query + " in the context of investing and finance.",
-          url: "#",
-          source: "definition",
-        },
-      ],
-    }
-  } catch (error) {
-    console.error("Error searching investment terms:", error)
-    throw error
-  }
-}
-
-// Function to get market data
-export async function getMarketData() {
-  try {
-    // In a real app, this would call an API to get market data
-    // For demo purposes, we'll simulate a response
-
-    // Simulate API delay
-    await new Promise((resolve) => setTimeout(resolve, 1000))
-
-    // Return mock data
-    return {
-      indices: [
-        {
-          id: "sp500",
-          name: "S&P 500",
-          value: 5123.45,
-          change: 23.45,
-          changePercent: 0.46,
-        },
-        {
-          id: "dow",
-          name: "Dow Jones",
-          value: 38765.32,
-          change: -125.68,
-          changePercent: -0.32,
-        },
-      ],
-      trending: [
-        {
-          id: "1",
-          symbol: "AAPL",
-          name: "Apple Inc.",
-          price: 175.5,
-          change: 2.75,
-          changePercent: 1.59,
-        },
-        {
-          id: "2",
-          symbol: "TSLA",
-          name: "Tesla, Inc.",
-          price: 245.75,
-          change: 12.5,
-          changePercent: 5.36,
-        },
-      ],
-    }
-  } catch (error) {
-    console.error("Error getting market data:", error)
-    throw error
-  }
-}
-
-// Function to generate market commentary
 export async function generateMarketCommentary(marketData: {
   indices: MarketIndex[];
   trendingAssets: TrendingAsset[];
@@ -185,3 +95,13 @@ export async function generateMarketCommentary(marketData: {
 
   return generateText(prompt);
 }
+
+const getCachedMarketCommentary = unstable_cache(
+  async (marketData: { indices: MarketIndex[]; trendingAssets: TrendingAsset[] }) => {
+    return generateMarketCommentary(marketData);
+  },
+  ["market-commentary"],
+  { revalidate: 60 * 60 * 5 } // 5 hours
+);
+
+export { getCachedMarketCommentary };

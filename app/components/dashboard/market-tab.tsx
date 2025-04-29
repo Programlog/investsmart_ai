@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer } from "recharts"
 import { ArrowUpRight, ArrowDownRight, RefreshCw } from "lucide-react"
-import { generateMarketCommentary } from "@/services/ai-service"
+import { getCachedMarketCommentary } from "@/services/ai-service"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 
@@ -199,7 +199,7 @@ export default function MarketTab() {
         sentiment: asset.sentiment ?? "neutral",
       }))
 
-      const commentary = await generateMarketCommentary({
+      const commentary = await getCachedMarketCommentary({
         indices: marketIndices,
         trendingAssets: commentaryAssets,
       })
