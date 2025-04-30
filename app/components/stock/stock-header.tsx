@@ -58,8 +58,8 @@ export default function StockHeader({ data }: { data: StaticStockData }) {
         const intervalId = setInterval(fetchLatestBarData, 60000) // Refresh every 60 seconds
 
         return () => clearInterval(intervalId)
-        // Keep isLoading in dependency array for initial load logic
-    }, [data.symbol, isLoading])
+        // Trigger effect only when data.symbol changes
+    }, [data.symbol])
 
     // Update formatTimestamp to accept null
     const formatTimestamp = (isoTimestamp?: string | null) => {
