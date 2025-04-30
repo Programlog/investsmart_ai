@@ -66,8 +66,8 @@ Concise, actionable tips for Next.js, Shadcn UI, Tailwind CSS, Redux Toolkit, Re
 - Add comments to tricky logic sections.
 
 ### Security
-- Keep secrets in `.env` files.
-- Check inputs with Zod or Joi.
+- Keep secrets in `.env.local` files.
+- Check inputs with Zod.
 - Use HTTPS in production settings.
 
 ### Testing
@@ -79,10 +79,3 @@ Concise, actionable tips for Next.js, Shadcn UI, Tailwind CSS, Redux Toolkit, Re
 - Work in feature branches with PRs.
 - Explain setup steps in `README.md`.
 - Review code before merging PRs.
-
----
-
-## How to Use
-- **Performance question**: "Try caching LLM calls to speed up responses."
-- **Security question**: "Secure routes with Clerk’s `getAuth` function."
-- **Styling question**: "Group Tailwind classes for cleaner code."

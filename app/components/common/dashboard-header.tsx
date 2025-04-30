@@ -1,15 +1,5 @@
 import Link from "next/link"
-import { BarChart3, User, Settings, LogOut } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { BarChart3 } from "lucide-react"
 import { UserButton } from "@clerk/nextjs"
 
 
@@ -21,7 +11,7 @@ export default function DashboardHeader() {
           <BarChart3 className="h-6 w-6 text-primary" />
           <span>InvestSmart AI</span>
         </Link>
-        <UserButton showName/>
+        <UserButton showName />
         {/* <nav className="flex items-center gap-4">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>

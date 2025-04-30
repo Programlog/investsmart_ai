@@ -34,10 +34,13 @@ export const fetchSearchResults = createAsyncThunk(
             }
             const response = await axios.get("/api/search", { params });
             return response.data as { results: SearchResult[]; summary: string | null };
-        } catch (error: any) {
-            const errorMessage = error.response?.data?.error || error.message || "Failed to fetch search results";
+        } catch (error: unknown) {
+            const errorMessage = error instanceof Error ? error.message :
+                (error as { response?: { data?: { error?: string } } })?.response?.data?.error ||
+                "Failed to fetch search results";
             return rejectWithValue(errorMessage);
         }
+
     }
 );
 

@@ -13,14 +13,9 @@ export async function POST(req: Request) {
         controller.close();
       }
     });
-    return new NextResponse(stream, {
-      headers: { 'Content-Type': 'text/event-stream' }
-    });
+    return new NextResponse(stream, { headers: { 'Content-Type': 'text/event-stream' } });
   } catch (error) {
     console.error('AI API Error:', error);
-    return NextResponse.json(
-      { error: 'Failed to process AI request' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Failed to process AI request' }, { status: 500 });
   }
 }

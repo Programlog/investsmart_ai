@@ -24,8 +24,8 @@ export async function GET(req: NextRequest) {
             filter: validationResult.data.filter,
         });
         return NextResponse.json(data);
-    } catch (error: any) {
-        const message = error.message || "Failed to fetch search results";
+    } catch (error) {
+        const message = error instanceof Error ? error.message : "Failed to fetch search results";
         return NextResponse.json({ error: message }, { status: 500 });
     }
 }

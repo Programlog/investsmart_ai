@@ -29,6 +29,7 @@ import {
   CartesianGrid,
 } from "recharts"
 import { Plus, Trash2, RefreshCw, ArrowUpRight, ArrowDownRight } from "lucide-react"
+import Link from 'next/link';
 
 type Asset = {
   id: string
@@ -162,7 +163,7 @@ export default function PortfolioTab() {
 
   const handleRefreshPrices = () => {
     setIsRefreshing(true);
-    
+
     // Simulate API call to refresh prices
     setTimeout(() => {
       const updatedAssets = assets.map(asset => {
@@ -171,7 +172,7 @@ export default function PortfolioTab() {
         const newValue = newPrice * asset.quantity;
         const newChange = newValue - (asset.purchasePrice * asset.quantity);
         const newChangePercent = (newChange / (asset.purchasePrice * asset.quantity)) * 100;
-        
+
         return {
           ...asset,
           currentPrice: newPrice,
@@ -180,7 +181,7 @@ export default function PortfolioTab() {
           changePercent: newChangePercent
         };
       });
-      
+
       setAssets(updatedAssets);
       setIsRefreshing(false);
     }, 1000);
@@ -354,7 +355,11 @@ export default function PortfolioTab() {
                   <tbody>
                     {assets.map((asset) => (
                       <tr key={asset.id} className="border-b">
-                        <td className="p-4 font-medium">{asset.symbol}</td>
+                        <td className="p-4 font-medium">
+                          <Link href={`/stock/${asset.symbol}`} className="hover:underline">
+                            {asset.symbol}
+                          </Link>
+                        </td>
                         <td className="p-4">{asset.name}</td>
                         <td className="p-4 text-right">{asset.quantity}</td>
                         <td className="p-4 text-right">${asset.currentPrice.toFixed(2)}</td>
@@ -449,21 +454,21 @@ export default function PortfolioTab() {
               <div className="h-[300px]">
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={performanceData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="date" />
-                  <YAxis />
-                  <Tooltip formatter={(value) => `$${value}`} />
-                  <Line 
-                    type="monotone" 
-                    dataKey="value" 
-                    stroke="#8b5cf6" 
-                    strokeWidth={2}
-                    dot={{ r: 4 }}
-                    activeDot={{ r: 6 }}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="date" />
+                    <YAxis />
+                    <Tooltip formatter={(value) => `$${value}`} />
+                    <Line
+                      type="monotone"
+                      dataKey="value"
+                      stroke="#8b5cf6"
+                      strokeWidth={2}
+                      dot={{ r: 4 }}
+                      activeDot={{ r: 6 }}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
             </TabsContent>
             <TabsContent value="3m"></TabsContent>
             <TabsContent value="6m"></TabsContent>
