@@ -5,25 +5,8 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from "recharts"
 import { Settings } from "lucide-react"
+import type { ChartDatum, StockChartProps, ChartPeriod } from "@/types/stock"
 
-type ChartPeriod = "1D" | "5D" | "1M" | "6M" | "YTD" | "1Y" | "5Y" | "All"
-
-interface ChartDatum {
-    time: string
-    price: number
-    open: number
-    high: number
-    low: number
-    volume: number
-}
-
-interface StockChartProps {
-    data: {
-        symbol: string
-        price: number
-        previousClose: number
-    }
-}
 
 export default function StockChart({ data }: StockChartProps) {
     const [activePeriod, setActivePeriod] = useState<ChartPeriod>("1D")

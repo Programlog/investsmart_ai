@@ -1,23 +1,7 @@
 "use server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { unstable_cache } from "next/cache";
-
-export interface MarketIndex {
-  id: string;
-  name: string;
-  value: number;
-  change: number;
-  changePercent: number;
-}
-
-export interface TrendingAsset {
-  id: string;
-  symbol: string;
-  name: string;
-  price: number;
-  change: number;
-  changePercent: number;
-}
+import type { MarketIndex, TrendingAsset } from "@/types/stock";
 
 const geminiApiKey = process.env.GEMINI_API_KEY;
 

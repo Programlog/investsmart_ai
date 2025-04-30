@@ -5,21 +5,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Star, ArrowUpRight, ArrowDownRight, Info, Loader2 } from "lucide-react"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
-
-interface LatestBarData {
-    symbol: string
-    close: number | null
-    timestamp: string | null
-}
-
-interface StaticStockData {
-    symbol: string
-    name: string
-    exchange: string
-    currency: string
-    change: number
-    changePercent: number
-}
+import type { LatestBarData, StaticStockData } from "@/types/stock"
 
 export default function StockHeader({ data }: { data: StaticStockData }) {
     const [latestBarData, setLatestBarData] = useState<LatestBarData | null>(null)

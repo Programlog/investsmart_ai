@@ -80,7 +80,7 @@ export default function StockDetailPage() {
                     <div className="space-y-6">
                         <StockHeader data={stockData} />
                         <StockChart data={stockData} />
-                        <StockStats data={stockData} />
+                        <StockStats symbol={stockData.symbol} />
                         <StockNews symbol={symbol} />
                     </div>
                 ) : null}
