@@ -7,115 +7,120 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { Settings } from "lucide-react"
 import type { ChartDatum, StockChartProps, ChartPeriod } from "@/types/stock"
 
+const CHART_PERIODS: { [key in ChartPeriod]: { timeframe: string; limit: number; getDates: (now: Date) => { start: Date; end: Date } } } = {
+    "1D": {
+        timeframe: "5Min",
+        limit: 78,
+        getDates: (now) => {
+            const day = now.getDay()
+            const offset = day === 0 ? -2 : day === 6 ? -1 : 0
+            const date = new Date(now)
+            date.setDate(now.getDate() + offset)
+            return {
+                start: new Date(date.setHours(9, 30, 0, 0)),
+                end: new Date(date.setHours(16, 0, 0, 0))
+            }
+        }
+    },
+    "5D": {
+        timeframe: "15Min",
+        limit: 130,
+        getDates: (now) => ({
+            start: new Date(now.setDate(now.getDate() - 7)),
+            end: new Date()
+        })
+    },
+    "1M": {
+        timeframe: "1Hour",
+        limit: 160,
+        getDates: (now) => ({
+            start: new Date(now.setMonth(now.getMonth() - 1)),
+            end: new Date()
+        })
+    },
+    "6M": {
+        timeframe: "1Day",
+        limit: 130,
+        getDates: (now) => ({
+            start: new Date(now.setMonth(now.getMonth() - 6)),
+            end: new Date()
+        })
+    },
+    "YTD": {
+        timeframe: "1Day",
+        limit: 180,
+        getDates: (now) => ({
+            start: new Date(now.getFullYear(), 0, 1),
+            end: new Date()
+        })
+    },
+    "1Y": {
+        timeframe: "1Day",
+        limit: 260,
+        getDates: (now) => ({
+            start: new Date(now.setFullYear(now.getFullYear() - 1)),
+            end: new Date()
+        })
+    },
+    "5Y": {
+        timeframe: "1Week",
+        limit: 260,
+        getDates: (now) => ({
+            start: new Date(now.setFullYear(now.getFullYear() - 5)),
+            end: new Date()
+        })
+    },
+    "All": {
+        timeframe: "1Month",
+        limit: 120,
+        getDates: (now) => ({
+            start: new Date(now.setFullYear(now.getFullYear() - 10)),
+            end: new Date()
+        })
+    }
+}
 
 export default function StockChart({ data }: StockChartProps) {
     const [activePeriod, setActivePeriod] = useState<ChartPeriod>("1D")
-    const [showEvents, setShowEvents] = useState(false)
     const [chartData, setChartData] = useState<ChartDatum[]>([])
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
 
-    // Fetch chart data from API
     useEffect(() => {
-        let isMounted = true
+        const controller = new AbortController()
+
         async function fetchChart() {
             setLoading(true)
             setError(null)
+
             try {
                 const now = new Date()
-                let startDate = new Date(now)
-                let endDate = new Date(now)
-                let timeframe = "5Min"
-                let limit = 100
+                const period = CHART_PERIODS[activePeriod]
+                const { start, end } = period.getDates(now)
 
-                switch (activePeriod) {
-                    case "1D": {
-                        // Find the most recent weekday (Mon-Fri)
-                        const day = now.getDay()
-                        let offset = 0
-                        if (day === 0) offset = -2 // Sunday -> Friday
-                        else if (day === 6) offset = -1 // Saturday -> Friday
-                        startDate = new Date(now)
-                        startDate.setDate(now.getDate() + offset)
-                        startDate.setHours(9, 30, 0, 0)
-                        endDate = new Date(now)
-                        endDate.setDate(now.getDate() + offset)
-                        endDate.setHours(16, 0, 0, 0)
-                        timeframe = "5Min"
-                        limit = 78
-                        break
-                    }
-                    case "5D":
-                        startDate.setDate(now.getDate() - 7)
-                        timeframe = "15Min"
-                        limit = 130
-                        break
-                    case "1M":
-                        startDate.setMonth(now.getMonth() - 1)
-                        timeframe = "1Hour"
-                        limit = 160
-                        break
-                    case "6M":
-                        startDate.setMonth(now.getMonth() - 6)
-                        timeframe = "1Day"
-                        limit = 130
-                        break
-                    case "YTD":
-                        startDate = new Date(now.getFullYear(), 0, 1)
-                        timeframe = "1Day"
-                        limit = 180
-                        break
-                    case "1Y":
-                        startDate.setFullYear(now.getFullYear() - 1)
-                        timeframe = "1Day"
-                        limit = 260
-                        break
-                    case "5Y":
-                        startDate.setFullYear(now.getFullYear() - 5)
-                        timeframe = "1Week"
-                        limit = 260
-                        break
-                    case "All":
-                        startDate.setFullYear(now.getFullYear() - 10)
-                        timeframe = "1Month"
-                        limit = 120
-                        break
-                    default:
-                        break
-                }
-
-                const start = startDate.toISOString()
-                const end = endDate.toISOString()
-                const url = `/api/market/stock?symbol=${encodeURIComponent(data.symbol)}&timeframe=${timeframe}&limit=${limit}&start=${encodeURIComponent(start)}&end=${encodeURIComponent(end)}`
-                const res = await fetch(url)
+                const url = `/api/market/stock?symbol=${encodeURIComponent(data.symbol)}&timeframe=${period.timeframe}&limit=${period.limit}&start=${encodeURIComponent(start.toISOString())}&end=${encodeURIComponent(end.toISOString())}`
+                const res = await fetch(url, { signal: controller.signal })
                 const json = await res.json()
+
                 if (!res.ok || !json.chartData) throw new Error(json.error || "Failed to load chart data")
-                if (isMounted) setChartData(json.chartData)
+                setChartData(json.chartData)
             } catch (err) {
-                if (isMounted) setError(err instanceof Error ? err.message : "Error loading chart data")
+                if (err instanceof Error && err.name !== 'AbortError') {
+                    setError(err.message)
+                }
             } finally {
-                if (isMounted) setLoading(false)
+                setLoading(false)
             }
         }
+
         fetchChart()
-        return () => { isMounted = false }
+        return () => controller.abort()
     }, [data.symbol, activePeriod])
 
     const lastPrice = chartData[chartData.length - 1]?.price || data.price
     const startPrice = chartData[0]?.price || data.previousClose
-    const max = chartData.length > 0 ? Math.max(...chartData.map((d) => d.price)) * 1.001 : 0
-    const min = chartData.length > 0 ? Math.min(...chartData.map((d) => d.price)) * 0.999 : 0
-
-    // Select visible data points based on the period
-    const visibleData = (() => {
-        switch (activePeriod) {
-            case "1D":
-                return chartData
-            default:
-                return chartData
-        }
-    })()
-
+    const max = Math.max(...chartData.map((d) => d.price), lastPrice) * 1.001
+    const min = Math.min(...chartData.map((d) => d.price), lastPrice) * 0.999
     const isPositiveDay = lastPrice >= startPrice
 
     return (
@@ -123,32 +128,22 @@ export default function StockChart({ data }: StockChartProps) {
             <CardContent className="pt-6">
                 <div className="flex flex-wrap justify-between items-center mb-6">
                     <div className="flex space-x-1 overflow-x-auto pb-1">
-                        {(["1D", "5D", "1M", "6M", "YTD", "1Y", "5Y", "All"] as ChartPeriod[]).map((period) => (
+                        {Object.keys(CHART_PERIODS).map((period) => (
                             <Button
                                 key={period}
                                 variant={activePeriod === period ? "default" : "ghost"}
                                 size="sm"
                                 className={`rounded-full h-8 px-3 ${activePeriod === period ? "bg-primary text-primary-foreground" : ""}`}
-                                onClick={() => setActivePeriod(period)}
+                                onClick={() => setActivePeriod(period as ChartPeriod)}
                             >
                                 {period}
                             </Button>
                         ))}
                     </div>
-                    <div className="flex items-center space-x-2">
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            className={`h-8 ${showEvents ? "bg-muted" : ""}`}
-                            onClick={() => setShowEvents(!showEvents)}
-                        >
-                            Key Events
-                        </Button>
-                        <Button variant="outline" size="sm" className="h-8">
-                            <Settings className="h-4 w-4 mr-2" />
-                            <span className="hidden sm:inline">Advanced Chart</span>
-                        </Button>
-                    </div>
+                    <Button variant="outline" size="sm" className="h-8">
+                        <Settings className="h-4 w-4 mr-2" />
+                        <span className="hidden sm:inline">Advanced Chart</span>
+                    </Button>
                 </div>
 
                 <div className="h-[350px] w-full">
@@ -160,7 +155,7 @@ export default function StockChart({ data }: StockChartProps) {
                         <div className="flex items-center justify-center h-full text-red-500">{error}</div>
                     ) : (
                         <ResponsiveContainer width="100%" height="100%">
-                            <LineChart data={visibleData} margin={{ top: 5, right: 5, left: 5, bottom: 5 }}>
+                            <LineChart data={chartData} margin={{ top: 5, right: 5, left: 5, bottom: 5 }}>
                                 <CartesianGrid strokeDasharray="3 3" vertical={false} />
                                 <XAxis dataKey="time" axisLine={false} tickLine={false} minTickGap={60} tick={{ fontSize: 12 }} />
                                 <YAxis
