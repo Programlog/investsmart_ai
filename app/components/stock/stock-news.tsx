@@ -9,13 +9,14 @@ import { Clock, ArrowRight } from "lucide-react"
 type NewsCategory = "all" | "news" | "press" | "filing"
 
 type NewsItem = {
-    id: string
+    id: string | number
     title: string
     source: string
     timestamp: string
     summary: string
     category: string
     url: string
+    image?: string
 }
 
 export default function StockNews({ symbol }: { symbol: string }) {
@@ -29,21 +30,12 @@ export default function StockNews({ symbol }: { symbol: string }) {
             setIsLoading(true)
             setError(null)
             try {
-                const res = await fetch(`/api/market/stock?symbol=${encodeURIComponent(symbol)}&type=news`)
+                const res = await fetch(`/api/market/stock/news?symbol=${encodeURIComponent(symbol)}`)
                 if (!res.ok) throw new Error("Failed to fetch news")
                 const data = await res.json()
-                // Map API response to NewsItem[]
-                setNewsItems(
-                    (data.news || []).map((item: NewsItem) => ({
-                        id: item.id,
-                        title: item.title,
-                        source: item.source,
-                        timestamp: new Date(item.timestamp).toLocaleString(),
-                        summary: item.summary,
-                        category: "news", // Alpaca API does not provide category, so default to 'news'
-                        url: item.url,
-                    }))
-                )
+                if (data.error) throw new Error(data.error)
+
+                setNewsItems(data.news)
             } catch (error) {
                 setError("Error fetching news")
                 console.error("Error fetching news:", error)
@@ -55,8 +47,10 @@ export default function StockNews({ symbol }: { symbol: string }) {
     }, [symbol])
 
     const filteredNews = useMemo(() => {
-        if (activeCategory === "all") return newsItems
-        return newsItems.filter((item) => item.category === activeCategory)
+        const filtered = activeCategory === "all"
+            ? newsItems
+            : newsItems.filter((item) => item.category === activeCategory)
+        return filtered.slice(0, 10)
     }, [newsItems, activeCategory])
 
     return (
