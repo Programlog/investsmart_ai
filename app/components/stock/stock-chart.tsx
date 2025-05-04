@@ -1,11 +1,12 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from "recharts"
 import { Settings } from "lucide-react"
 import type { ChartDatum, StockChartProps, ChartPeriod } from "@/types/stock"
+import { previousClose } from "@/lib/utils"
 
 const CHART_PERIODS: { [key in ChartPeriod]: { timeframe: string; limit: number; getDates: (now: Date) => { start: Date; end: Date } } } = {
     "1D": {
@@ -80,7 +81,7 @@ const CHART_PERIODS: { [key in ChartPeriod]: { timeframe: string; limit: number;
     }
 }
 
-export default function StockChart({ data }: StockChartProps) {
+export default function StockChart({ symbol }: StockChartProps) {
     const [activePeriod, setActivePeriod] = useState<ChartPeriod>("1D")
     const [chartData, setChartData] = useState<ChartDatum[]>([])
     const [loading, setLoading] = useState(true)
@@ -98,7 +99,7 @@ export default function StockChart({ data }: StockChartProps) {
                 const period = CHART_PERIODS[activePeriod]
                 const { start, end } = period.getDates(now)
 
-                const url = `/api/market/stock?symbol=${encodeURIComponent(data.symbol)}&timeframe=${period.timeframe}&limit=${period.limit}&start=${encodeURIComponent(start.toISOString())}&end=${encodeURIComponent(end.toISOString())}`
+                const url = `/api/market/stock?symbol=${encodeURIComponent(symbol)}&timeframe=${period.timeframe}&limit=${period.limit}&start=${encodeURIComponent(start.toISOString())}&end=${encodeURIComponent(end.toISOString())}`
                 const res = await fetch(url, { signal: controller.signal })
                 const json = await res.json()
 
@@ -115,13 +116,19 @@ export default function StockChart({ data }: StockChartProps) {
 
         fetchChart()
         return () => controller.abort()
-    }, [data.symbol, activePeriod])
+    }, [symbol, activePeriod])
 
-    const lastPrice = chartData[chartData.length - 1]?.price || data.price
-    const startPrice = chartData[0]?.price || data.previousClose
-    const max = Math.max(...chartData.map((d) => d.price), lastPrice) * 1.001
-    const min = Math.min(...chartData.map((d) => d.price), lastPrice) * 0.999
-    const isPositiveDay = lastPrice >= startPrice
+    const chartMetrics = useMemo(() => {
+        const lastPrice = chartData[chartData.length - 1]?.price || 0
+        const startPrice = chartData[0]?.price || 0
+        const max = Math.max(...chartData.map((d) => d.price), lastPrice) * 1.001
+        const min = Math.min(...chartData.map((d) => d.price), lastPrice) * 0.999
+        const prevClose = previousClose(chartData)
+        const isPositiveDay = lastPrice >= (activePeriod === "1D" ? prevClose : startPrice)
+        const referencePrice = activePeriod === "1D" ? prevClose : startPrice
+
+        return { lastPrice, startPrice, max, min, prevClose, isPositiveDay, referencePrice }
+    }, [chartData, activePeriod])
 
     return (
         <Card>
@@ -159,7 +166,7 @@ export default function StockChart({ data }: StockChartProps) {
                                 <CartesianGrid strokeDasharray="3 3" vertical={false} />
                                 <XAxis dataKey="time" axisLine={false} tickLine={false} minTickGap={60} tick={{ fontSize: 12 }} />
                                 <YAxis
-                                    domain={[min, max]}
+                                    domain={[chartMetrics.min, chartMetrics.max]}
                                     axisLine={false}
                                     tickLine={false}
                                     tick={{ fontSize: 12 }}
@@ -177,11 +184,11 @@ export default function StockChart({ data }: StockChartProps) {
                                         boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
                                     }}
                                 />
-                                <ReferenceLine y={data.previousClose} stroke="red" strokeDasharray="3 3" />
+                                <ReferenceLine y={chartMetrics.referencePrice} stroke="#6b7280" strokeDasharray="3 3" />
                                 <Line
                                     type="monotone"
                                     dataKey="price"
-                                    stroke={isPositiveDay ? "#10b981" : "#ef4444"}
+                                    stroke={chartMetrics.isPositiveDay ? "#10b981" : "#ef4444"}
                                     dot={false}
                                     strokeWidth={2}
                                 />

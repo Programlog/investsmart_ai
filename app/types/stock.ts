@@ -68,11 +68,7 @@ export interface ChartDatum {
 
 
 export interface StockChartProps {
-    data: {
-        symbol: string
-        price: number
-        previousClose: number
-    }
+    symbol: string
 }
 
 // Market data interfaces
