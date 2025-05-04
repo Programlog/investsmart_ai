@@ -8,78 +8,33 @@ import { Settings } from "lucide-react"
 import type { ChartDatum, StockChartProps, ChartPeriod } from "@/types/stock"
 import { previousClose } from "@/lib/utils"
 
-const CHART_PERIODS: { [key in ChartPeriod]: { timeframe: string; limit: number; getDates: (now: Date) => { start: Date; end: Date } } } = {
-    "1D": {
-        timeframe: "5Min",
-        limit: 78,
-        getDates: (now) => {
-            const day = now.getDay()
-            const offset = day === 0 ? -2 : day === 6 ? -1 : 0
-            const date = new Date(now)
-            date.setDate(now.getDate() + offset)
-            return {
-                start: new Date(date.setHours(9, 30, 0, 0)),
-                end: new Date(date.setHours(16, 0, 0, 0))
-            }
-        }
-    },
-    "5D": {
-        timeframe: "15Min",
-        limit: 130,
-        getDates: (now) => ({
-            start: new Date(now.setDate(now.getDate() - 7)),
-            end: new Date()
-        })
-    },
-    "1M": {
-        timeframe: "1Hour",
-        limit: 160,
-        getDates: (now) => ({
-            start: new Date(now.setMonth(now.getMonth() - 1)),
-            end: new Date()
-        })
-    },
-    "6M": {
-        timeframe: "1Day",
-        limit: 130,
-        getDates: (now) => ({
-            start: new Date(now.setMonth(now.getMonth() - 6)),
-            end: new Date()
-        })
-    },
-    "YTD": {
-        timeframe: "1Day",
-        limit: 180,
-        getDates: (now) => ({
-            start: new Date(now.getFullYear(), 0, 1),
-            end: new Date()
-        })
-    },
-    "1Y": {
-        timeframe: "1Day",
-        limit: 260,
-        getDates: (now) => ({
-            start: new Date(now.setFullYear(now.getFullYear() - 1)),
-            end: new Date()
-        })
-    },
-    "5Y": {
-        timeframe: "1Week",
-        limit: 260,
-        getDates: (now) => ({
-            start: new Date(now.setFullYear(now.getFullYear() - 5)),
-            end: new Date()
-        })
-    },
-    "All": {
-        timeframe: "1Month",
-        limit: 120,
-        getDates: (now) => ({
-            start: new Date(now.setFullYear(now.getFullYear() - 10)),
-            end: new Date()
-        })
+const getDateRange = (modifier: (date: Date) => void): { start: Date; end: Date } => {
+    const start = new Date()
+    modifier(start)
+    return { start, end: new Date() }
+}
+
+const getMarketHours = (date: Date) => {
+    const day = date.getDay()
+    const offset = day === 0 ? -2 : day === 6 ? -1 : 0
+    const adjustedDate = new Date(date)
+    adjustedDate.setDate(date.getDate() + offset)
+    return {
+        start: new Date(adjustedDate.setHours(9, 30, 0, 0)),
+        end: new Date(adjustedDate.setHours(16, 0, 0, 0))
     }
 }
+
+const CHART_PERIODS: { [key in ChartPeriod]: { timeframe: string; limit: number; getDates: (now: Date) => { start: Date; end: Date } } } = {
+    "1D": { timeframe: "5Min", limit: 78, getDates: getMarketHours },
+    "5D": { timeframe: "15Min", limit: 130, getDates: (now) => getDateRange(d => d.setDate(d.getDate() - 7)) },
+    "1M": { timeframe: "1Hour", limit: 160, getDates: (now) => getDateRange(d => d.setMonth(d.getMonth() - 1)) },
+    "6M": { timeframe: "1Day", limit: 130, getDates: (now) => getDateRange(d => d.setMonth(d.getMonth() - 6)) },
+    "YTD": { timeframe: "1Day", limit: 180, getDates: () => ({ start: new Date(new Date().getFullYear(), 0, 1), end: new Date() }) },
+    "1Y": { timeframe: "1Day", limit: 260, getDates: (now) => getDateRange(d => d.setFullYear(d.getFullYear() - 1)) },
+    "5Y": { timeframe: "1Week", limit: 260, getDates: (now) => getDateRange(d => d.setFullYear(d.getFullYear() - 5)) },
+    "All": { timeframe: "1Month", limit: 120, getDates: (now) => getDateRange(d => d.setFullYear(d.getFullYear() - 10)) }
+} as const
 
 export default function StockChart({ symbol }: StockChartProps) {
     const [activePeriod, setActivePeriod] = useState<ChartPeriod>("1D")
