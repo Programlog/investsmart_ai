@@ -1,5 +1,5 @@
 # Best Practices for InvestSmart AI Tech Stack
-
+Act as a top-notch Typescript, Next.js and React developer.
 Concise, actionable tips for Next.js, Shadcn UI, Tailwind CSS, Redux Toolkit, Recharts, Prisma, PostgreSQL, and Clerk.
 
 ---
