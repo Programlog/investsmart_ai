@@ -1,6 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { unstable_cache } from 'next/cache'
 import { generateStockRating } from '@/services/ai-service'
 import type { StockMetrics, StockRatingRequest } from '@/types/stock'
+
+// Create a cached version of the stock rating generation function
+const getCachedStockRating = unstable_cache(
+    async (ratingRequest: StockRatingRequest) => {
+        return generateStockRating(ratingRequest)
+    },
+    ['stock-rating'],
+    { revalidate: 86400 } // Cache for 1 day
+)
 
 /**
  * POST handler for stock rating generation
@@ -20,15 +30,11 @@ export async function POST(req: NextRequest) {
             metrics: body.metrics as StockMetrics
         }
 
-        const rating = await generateStockRating(ratingRequest)
+        // Use the cached version of generateStockRating
+        const rating = await getCachedStockRating(ratingRequest)
 
         return NextResponse.json(rating)
     } catch (error) {
-        console.error('Error generating stock rating:', error)
-
-        return NextResponse.json(
-            { error: 'Failed to generate stock rating' },
-            { status: 500 }
-        )
+        return NextResponse.json({ error: 'Failed to generate stock rating' }, { status: 500 })
     }
 }
