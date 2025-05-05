@@ -1,7 +1,12 @@
 "use server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import {
+  GoogleGenAI,
+  Type,
+} from '@google/genai';
+
 import { unstable_cache } from "next/cache";
-import type { MarketIndex, TrendingAsset } from "@/types/stock";
+import type { MarketIndex, TrendingAsset, StockMetrics, NewsItem } from "@/types/stock";
 
 const geminiApiKey = process.env.GEMINI_API_KEY;
 
@@ -88,4 +93,63 @@ const getCachedMarketCommentary = unstable_cache(
   { revalidate: 60 * 60 * 5 } // 5 hours
 );
 
-export { getCachedMarketCommentary };
+/**
+ * Generate a buy/hold/sell rating for a stock using news and key metrics.
+ * @param symbol Stock ticker symbol
+ * @param news Array of NewsItem
+ * @param metrics StockMetrics
+ */
+export async function generateStockRating({ symbol, news, metrics, }: {
+  symbol: string;
+  news: NewsItem[];
+  metrics: StockMetrics;
+}): Promise<{ rating: string; reasoning: string }> {
+  const newsSummaries = news && news.length > 0
+    ? news.map((n) => `- ${n.title}: ${n.summary}`).join("\n")
+    : "No recent news.";
+
+  const prompt = `You are an advanced financial assistant. Given the following recent news and financial metrics for the stock ${symbol}, provide a JSON response with keys: rating (buy, hold, or sell) and reasoning (concise, <100 words):\n\nRecent News Headlines:\n${newsSummaries}\n\nKey Metrics:\n- Market Cap: ${metrics.marketCapitalization}\n- P/E (TTM): ${metrics.peTTM}\n- P/E (Annual): ${metrics.peAnnual}\n- EPS (TTM): ${metrics.epsTTM}\n- EPS (Annual): ${metrics.epsAnnual}\n- Dividend Yield: ${metrics.dividendYieldIndicatedAnnual}\n- 52W Range: ${metrics["52WeekLow"]} - ${metrics["52WeekHigh"]}\n- Beta: ${metrics.beta}\n- 10D Avg Volume: ${metrics["10DayAverageTradingVolume"]}\n- 3M Avg Volume: ${metrics["3MonthAverageTradingVolume"]}\n- Net Profit Margin (TTM): ${metrics.netProfitMarginTTM}\n- EPS Growth YoY: ${metrics.epsGrowthTTMYoy}\n- Revenue Growth YoY: ${metrics.revenueGrowthTTMYoy}\n\nRespond only in JSON.`;
+
+  const ai = new GoogleGenAI({
+    apiKey: process.env.GEMINI_API_KEY,
+  });
+  const config = {
+    temperature: 0,
+    responseMimeType: 'application/json',
+    responseSchema: {
+      type: Type.OBJECT,
+      properties: {
+        Rating: {
+          type: Type.STRING,
+        },
+        Reason: {
+          type: Type.STRING,
+        },
+      },
+    },
+  };
+  const model = 'gemini-2.0-flash';
+  const contents = [
+    {
+      role: 'user',
+      parts: [
+        {
+          text: prompt,
+        },
+      ],
+    },
+  ];
+
+  const response = await ai.models.generateContentStream({
+    model,
+    config,
+    contents,
+  });
+  let text = "";
+  for await (const chunk of response) {
+    text += chunk.text;
+  }
+  return JSON.parse(text);
+}
+
+export { getCachedMarketCommentary }
