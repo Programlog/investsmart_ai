@@ -12,7 +12,7 @@ import DashboardHeader from "@/components/common/dashboard-header"
 
 export default function StockDetailPage() {
     const params = useParams()
-    const symbol = params.symbol as string
+    const symbol = (params.symbol as string).toUpperCase()
     const [isLoading, setIsLoading] = useState(true)
     const [error, setError] = useState<Error | null>(null)
 
