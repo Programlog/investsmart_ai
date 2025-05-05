@@ -26,20 +26,19 @@ export default function StockHeader({ symbol }: { symbol: string }) {
     useEffect(() => {
         const fetchData = async () => {
             try {
-                // Fetch company profile
-                const profileRes = await fetch(`/api/market/stock/header?symbol=${symbol}`)
+                const [profileRes, barRes] = await Promise.all([
+                    fetch(`/api/market/stock/header?symbol=${symbol}`),
+                    fetch(`/api/market/stock?symbol=${symbol}&type=latestBar`)
+                ])
+
                 const profileData = await profileRes.json()
-
-                if (!profileRes.ok) throw new Error(profileData.error || `Failed to fetch profile (${profileRes.status})`)
-                setProfile(profileData.profile)
-
-                // Fetch latest bar data
-                const barRes = await fetch(`/api/market/stock?symbol=${symbol}&type=latestBar`)
                 const barData = await barRes.json()
 
+                if (!profileRes.ok) throw new Error(profileData.error || `Failed to fetch profile (${profileRes.status})`)
                 if (!barRes.ok) throw new Error(barData.error || `Failed to fetch data (${barRes.status})`)
                 if (!barData.latestBar?.close) throw new Error("Invalid data received")
 
+                setProfile(profileData.profile)
                 setLatestBarData(barData.latestBar)
                 setError(null)
             } catch (err) {
