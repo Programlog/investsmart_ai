@@ -118,3 +118,14 @@ export interface StaticStockData {
     change: number
     changePercent: number
 }
+
+export interface CompanyProfile {
+    country: string
+    currency: string
+    exchange: string
+    finnhubIndustry: string
+    logo: string
+    name: string
+    ticker: string
+    weburl: string
+}
