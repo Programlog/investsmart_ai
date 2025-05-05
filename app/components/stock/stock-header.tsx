@@ -2,11 +2,9 @@
 
 import { useState, useEffect, useMemo } from "react"
 import Image from "next/image"
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Card } from "@/components/ui/card"
 import { Star, ArrowUpRight, ArrowDownRight, Info } from "lucide-react"
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import { HoverCard, HoverCardTrigger, HoverCardContent } from "@/components/ui/hover-card"
 import type { LatestBarData, CompanyProfile, NewsItem, StockMetrics, StockRating } from "@/types/stock"
 
 
@@ -156,16 +154,38 @@ export default function StockHeader({ symbol }: { symbol: string }) {
             </div>
 
             <div className="flex flex-wrap gap-2 items-center">
-                <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleGetRating}
-                    disabled={isLoadingRating || !metrics}
-                    className="rounded-md px-3 py-1 text-sm flex items-center gap-2"
-                >
-                    <Info className="h-3.5 w-3.5" />
-                    {isLoadingRating ? "Analyzing..." : "Time to buy?"}
-                </Button>
+                <HoverCard>
+                    <HoverCardTrigger asChild>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={handleGetRating}
+                            disabled={isLoadingRating || !metrics}
+                            className="rounded-md px-3 py-1 text-sm flex items-center gap-2"
+                        >
+                            <Info className="h-3.5 w-3.5" />
+                            {isLoadingRating ? "Analyzing..." : "Time to buy?"}
+                        </Button>
+                    </HoverCardTrigger>
+                    {rating && (
+                        <HoverCardContent align="start" className="w-80">
+                            <div className="flex flex-col space-y-2">
+                                <div className="flex items-center gap-2">
+                                    <div className={`text-lg font-semibold ${ratingColorClass}`}>
+                                        {rating.rating || "No Rating"}
+                                    </div>
+                                    <div className="h-4 w-px bg-gray-200" />
+                                    <div className="text-sm text-muted-foreground">
+                                        AI Recommendation
+                                    </div>
+                                </div>
+                                <p className="text-sm text-muted-foreground">
+                                    {rating.reasoning || "No reasoning provided."}
+                                </p>
+                            </div>
+                        </HoverCardContent>
+                    )}
+                </HoverCard>
                 {profile?.weburl && (
                     <a
                         href={profile.weburl}
@@ -177,23 +197,6 @@ export default function StockHeader({ symbol }: { symbol: string }) {
                     </a>
                 )}
             </div>
-
-            {rating && (
-                <Card className="p-4 mt-4 max-w-md">
-                    <div className="flex items-center gap-2 mb-2">
-                        <div className={`text-lg font-semibold ${ratingColorClass}`}>
-                            {rating.rating || "No Rating"}
-                        </div>
-                        <div className="h-4 w-px bg-gray-200" />
-                        <div className="text-sm text-muted-foreground">
-                            AI Recommendation
-                        </div>
-                    </div>
-                    <p className="text-sm text-muted-foreground">
-                        {rating.reasoning || "No reasoning provided."}
-                    </p>
-                </Card>
-            )}
         </div>
     )
 }
