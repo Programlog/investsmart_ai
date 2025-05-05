@@ -20,39 +20,6 @@ export interface StockStatsProps {
     symbol: string
 }
 
-export interface StockData {
-    symbol: string
-    name: string
-    price: number
-    change: number
-    changePercent: number
-    afterHoursPrice?: number
-    afterHoursChange?: number
-    afterHoursChangePercent?: number
-    currency: string
-    exchange: string
-    previousClose: number
-    open: number
-    dayRange: {
-        low: number
-        high: number
-    }
-    weekRange: {
-        low: number
-        high: number
-    }
-    marketCap: string
-    volume: number
-    avgVolume: number
-    peRatio: number
-    eps: number
-    dividend: number
-    dividendYield: number
-    earningsDate: string
-    exDividendDate: string
-    targetEstimate: number
-    chartData: ChartDatum[]
-}
 
 // Chart related interfaces
 export type ChartPeriod = "1D" | "5D" | "1M" | "6M" | "YTD" | "1Y" | "5Y" | "All"
