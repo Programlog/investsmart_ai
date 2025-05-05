@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import Image from "next/image"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Star, ArrowUpRight, ArrowDownRight, Info } from "lucide-react"
@@ -60,9 +61,11 @@ export default function StockHeader({ symbol }: { symbol: string }) {
                 <div className="flex flex-wrap items-center gap-3">
                     <div className="flex items-center gap-3">
                         {profile?.logo && (
-                            <img
+                            <Image
                                 src={profile.logo}
                                 alt={`${profile.name} logo`}
+                                width={32}
+                                height={32}
                                 className="h-8 w-8 rounded-full"
                             />
                         )}
