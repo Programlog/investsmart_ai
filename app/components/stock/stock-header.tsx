@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import Image from "next/image"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -59,7 +59,7 @@ export default function StockHeader({ symbol }: { symbol: string }) {
         }
 
         fetchData()
-        const intervalId = setInterval(() => fetchData(), 60000)
+        const intervalId = setInterval(fetchData, 120000) // 2 minutes
         return () => clearInterval(intervalId)
     }, [symbol])
 
@@ -70,14 +70,8 @@ export default function StockHeader({ symbol }: { symbol: string }) {
         try {
             const response = await fetch('/api/ai/stock-rating', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    symbol,
-                    news,
-                    metrics
-                }),
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ symbol, news, metrics }),
             })
 
             if (!response.ok) {
@@ -93,6 +87,14 @@ export default function StockHeader({ symbol }: { symbol: string }) {
             setIsLoadingRating(false)
         }
     }
+
+    const ratingColorClass = useMemo(() => {
+        if (!rating?.rating) return "text-gray-600";
+        const ratingLower = rating.rating.toLowerCase();
+        if (ratingLower === "buy") return "text-green-600";
+        if (ratingLower === "sell") return "text-red-600";
+        return "text-gray-600";
+    }, [rating]);
 
     return (
         <div className="space-y-4">
@@ -179,14 +181,7 @@ export default function StockHeader({ symbol }: { symbol: string }) {
             {rating && (
                 <Card className="p-4 mt-4 max-w-md">
                     <div className="flex items-center gap-2 mb-2">
-                        <div
-                            className={`text-lg font-semibold ${rating.rating && rating.rating.toLowerCase() === "buy"
-                                ? "text-green-600"
-                                : rating.rating && rating.rating.toLowerCase() === "sell"
-                                    ? "text-red-600"
-                                    : "text-gray-600"
-                                }`}
-                        >
+                        <div className={`text-lg font-semibold ${ratingColorClass}`}>
                             {rating.rating || "No Rating"}
                         </div>
                         <div className="h-4 w-px bg-gray-200" />
