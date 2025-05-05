@@ -17,9 +17,9 @@ const format = {
     price: (num: number) => `$${num.toFixed(2)}`,
     marketCap: (num: number) => {
         const value = num * 1000
-        return value >= 1e12 ? `${(value / 1e12).toFixed(2)}T` :
-            value >= 1e9 ? `${(value / 1e9).toFixed(2)}B` :
-                value >= 1e6 ? `${(value / 1e6).toFixed(2)}M` :
+        return value >= 1e9 ? `${(value / 1e9).toFixed(2)}T` :
+            value >= 1e6 ? `${(value / 1e6).toFixed(2)}B` :
+                value >= 1e3 ? `${(value / 1e3).toFixed(2)}M` :
                     value.toFixed(2)
     },
     volume: (num: number) => `${num.toFixed(1)}M`,
