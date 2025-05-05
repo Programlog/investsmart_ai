@@ -4,9 +4,11 @@ import { useState, useEffect } from "react"
 import Image from "next/image"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { Card } from "@/components/ui/card"
 import { Star, ArrowUpRight, ArrowDownRight, Info } from "lucide-react"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
-import type { LatestBarData, CompanyProfile } from "@/types/stock"
+import type { LatestBarData, CompanyProfile, NewsItem, StockMetrics, StockRating } from "@/types/stock"
+
 
 const formatTimestamp = (isoTimestamp?: string | null) => {
     if (!isoTimestamp) return "N/A"
@@ -20,19 +22,27 @@ const formatTimestamp = (isoTimestamp?: string | null) => {
 export default function StockHeader({ symbol }: { symbol: string }) {
     const [latestBarData, setLatestBarData] = useState<LatestBarData | null>(null)
     const [profile, setProfile] = useState<CompanyProfile | null>(null)
+    const [news, setNews] = useState<NewsItem[]>([])
+    const [metrics, setMetrics] = useState<StockMetrics | null>(null)
+    const [rating, setRating] = useState<StockRating | null>(null)
+    const [isLoadingRating, setIsLoadingRating] = useState(false)
     const [error, setError] = useState<string | null>(null)
     const isPositiveChange = latestBarData?.close ? latestBarData.close > 0 : false
 
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const [profileRes, barRes] = await Promise.all([
+                const [profileRes, barRes, newsRes, metricsRes] = await Promise.all([
                     fetch(`/api/market/stock/header?symbol=${symbol}`),
-                    fetch(`/api/market/stock?symbol=${symbol}&type=latestBar`)
+                    fetch(`/api/market/stock?symbol=${symbol}&type=latestBar`),
+                    fetch(`/api/market/stock/news?symbol=${symbol}`),
+                    fetch(`/api/market/stock/stats?symbol=${encodeURIComponent(symbol)}`)
                 ])
 
                 const profileData = await profileRes.json()
                 const barData = await barRes.json()
+                const newsData = await newsRes.json()
+                const metricsData = await metricsRes.json()
 
                 if (!profileRes.ok) throw new Error(profileData.error || `Failed to fetch profile (${profileRes.status})`)
                 if (!barRes.ok) throw new Error(barData.error || `Failed to fetch data (${barRes.status})`)
@@ -40,6 +50,8 @@ export default function StockHeader({ symbol }: { symbol: string }) {
 
                 setProfile(profileData.profile)
                 setLatestBarData(barData.latestBar)
+                setNews(newsData.news || [])
+                setMetrics(metricsData.metrics)
                 setError(null)
             } catch (err) {
                 setError(err instanceof Error ? err.message : "An unknown error occurred")
@@ -50,6 +62,37 @@ export default function StockHeader({ symbol }: { symbol: string }) {
         const intervalId = setInterval(() => fetchData(), 60000)
         return () => clearInterval(intervalId)
     }, [symbol])
+
+    const handleGetRating = async () => {
+        if (!metrics || isLoadingRating) return
+
+        setIsLoadingRating(true)
+        try {
+            const response = await fetch('/api/ai/stock-rating', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    symbol,
+                    news,
+                    metrics
+                }),
+            })
+
+            if (!response.ok) {
+                throw new Error('Failed to get stock rating')
+            }
+
+            const data = await response.json()
+            setRating(data)
+        } catch (err) {
+            console.error('Error getting stock rating:', err)
+            setError(err instanceof Error ? err.message : "Failed to get rating")
+        } finally {
+            setIsLoadingRating(false)
+        }
+    }
 
     return (
         <div className="space-y-4">
@@ -111,19 +154,16 @@ export default function StockHeader({ symbol }: { symbol: string }) {
             </div>
 
             <div className="flex flex-wrap gap-2 items-center">
-                <TooltipProvider>
-                    <Tooltip>
-                        <TooltipTrigger asChild>
-                            <Badge variant="outline" className="cursor-help rounded-md px-3 py-1 text-sm flex items-center">
-                                <Info className="h-3.5 w-3.5 mr-1" />
-                                Time to buy {symbol}?
-                            </Badge>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                            <p>Get AI-powered investment advice</p>
-                        </TooltipContent>
-                    </Tooltip>
-                </TooltipProvider>
+                <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleGetRating}
+                    disabled={isLoadingRating || !metrics}
+                    className="rounded-md px-3 py-1 text-sm flex items-center gap-2"
+                >
+                    <Info className="h-3.5 w-3.5" />
+                    {isLoadingRating ? "Analyzing..." : "Time to buy?"}
+                </Button>
                 {profile?.weburl && (
                     <a
                         href={profile.weburl}
@@ -135,6 +175,30 @@ export default function StockHeader({ symbol }: { symbol: string }) {
                     </a>
                 )}
             </div>
+
+            {rating && (
+                <Card className="p-4 mt-4 max-w-md">
+                    <div className="flex items-center gap-2 mb-2">
+                        <div
+                            className={`text-lg font-semibold ${rating.rating && rating.rating.toLowerCase() === "buy"
+                                ? "text-green-600"
+                                : rating.rating && rating.rating.toLowerCase() === "sell"
+                                    ? "text-red-600"
+                                    : "text-gray-600"
+                                }`}
+                        >
+                            {rating.rating || "No Rating"}
+                        </div>
+                        <div className="h-4 w-px bg-gray-200" />
+                        <div className="text-sm text-muted-foreground">
+                            AI Recommendation
+                        </div>
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                        {rating.reasoning || "No reasoning provided."}
+                    </p>
+                </Card>
+            )}
         </div>
     )
 }

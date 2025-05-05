@@ -96,3 +96,15 @@ export interface CompanyProfile {
     ticker: string
     weburl: string
 }
+
+// Stock rating payload
+export interface StockRatingRequest {
+    symbol: string
+    news: NewsItem[]
+    metrics: StockMetrics
+}
+
+export interface StockRating {
+    rating: string
+    reasoning: string
+}
