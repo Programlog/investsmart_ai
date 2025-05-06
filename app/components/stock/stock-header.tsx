@@ -7,7 +7,6 @@ import { Star, ArrowUpRight, ArrowDownRight, Info } from "lucide-react"
 import { HoverCard, HoverCardTrigger, HoverCardContent } from "@/components/ui/hover-card"
 import type { LatestBarData, CompanyProfile, NewsItem, StockMetrics, StockRating } from "@/types/stock"
 
-
 const formatTimestamp = (isoTimestamp?: string | null) => {
     if (!isoTimestamp) return "N/A"
     return new Date(isoTimestamp).toLocaleTimeString("en-US", {
@@ -25,6 +24,8 @@ export default function StockHeader({ symbol }: { symbol: string }) {
     const [rating, setRating] = useState<StockRating | null>(null)
     const [isLoadingRating, setIsLoadingRating] = useState(false)
     const [error, setError] = useState<string | null>(null)
+    const [isFollowing, setIsFollowing] = useState(false)
+    const [isTogglingFollow, setIsTogglingFollow] = useState(false)
     const isPositiveChange = latestBarData?.close ? latestBarData.close > 0 : false
 
     useEffect(() => {
@@ -60,6 +61,33 @@ export default function StockHeader({ symbol }: { symbol: string }) {
         const intervalId = setInterval(fetchData, 120000) // 2 minutes
         return () => clearInterval(intervalId)
     }, [symbol])
+
+    useEffect(() => {
+        const checkWatchlist = async () => {
+            const watchlist = JSON.parse(localStorage.getItem('watchlist') || '[]')
+            setIsFollowing(watchlist.includes(symbol))
+        }
+        checkWatchlist()
+    }, [symbol])
+
+    const handleToggleFollow = async () => {
+        setIsTogglingFollow(true)
+        try {
+            const watchlist = JSON.parse(localStorage.getItem('watchlist') || '[]')
+            let newWatchlist
+            if (isFollowing) {
+                newWatchlist = watchlist.filter((s: string) => s !== symbol)
+            } else {
+                newWatchlist = [...watchlist, symbol]
+            }
+            localStorage.setItem('watchlist', JSON.stringify(newWatchlist))
+            setIsFollowing(!isFollowing)
+        } catch (err) {
+            console.error('Error updating watchlist:', err)
+        } finally {
+            setIsTogglingFollow(false)
+        }
+    }
 
     const handleGetRating = async () => {
         if (!metrics || isLoadingRating) return
@@ -115,9 +143,15 @@ export default function StockHeader({ symbol }: { symbol: string }) {
                             {profile?.name || "Loading..."} ({symbol})
                         </h1>
                     </div>
-                    <Button variant="outline" size="sm" className="h-8">
-                        <Star className="mr-2 h-4 w-4" />
-                        Following
+                    <Button
+                        variant={isFollowing ? "default" : "outline"}
+                        size="sm"
+                        className="h-8 transition-all duration-200"
+                        onClick={handleToggleFollow}
+                        disabled={isTogglingFollow}
+                    >
+                        <Star className={`mr-2 h-4 w-4 ${isFollowing ? 'fill-current' : ''}`} />
+                        {isTogglingFollow ? 'Updating...' : (isFollowing ? 'Following' : 'Follow')}
                     </Button>
                     <Button variant="outline" size="sm" className="h-8">
                         Compare

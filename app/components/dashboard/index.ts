@@ -4,4 +4,4 @@ export { default as MarketTab } from "./market-tab";
 export { default as NewsTab } from "./news-tab";
 export { default as PortfolioTab } from "./portfolio-tab";
 export { default as SearchTab } from "./search-tab";
-// ...add more as needed
+export { default as WatchlistTab } from "./watchlist-tab";
