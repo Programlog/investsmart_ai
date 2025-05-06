@@ -5,6 +5,7 @@ import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { Star, ArrowUpRight, ArrowDownRight, Info } from "lucide-react"
 import { HoverCard, HoverCardTrigger, HoverCardContent } from "@/components/ui/hover-card"
+import { addToWatchlist, removeFromWatchlist, getWatchlist } from "@/actions/watchlist"
 import type { LatestBarData, CompanyProfile, NewsItem, StockMetrics, StockRating } from "@/types/stock"
 
 const formatTimestamp = (isoTimestamp?: string | null) => {
@@ -64,8 +65,12 @@ export default function StockHeader({ symbol }: { symbol: string }) {
 
     useEffect(() => {
         const checkWatchlist = async () => {
-            const watchlist = JSON.parse(localStorage.getItem('watchlist') || '[]')
-            setIsFollowing(watchlist.includes(symbol))
+            try {
+                const watchlist = await getWatchlist()
+                setIsFollowing(watchlist.some(item => item.symbol === symbol))
+            } catch (error) {
+                console.error('Error checking watchlist:', error)
+            }
         }
         checkWatchlist()
     }, [symbol])
@@ -73,17 +78,14 @@ export default function StockHeader({ symbol }: { symbol: string }) {
     const handleToggleFollow = async () => {
         setIsTogglingFollow(true)
         try {
-            const watchlist = JSON.parse(localStorage.getItem('watchlist') || '[]')
-            let newWatchlist
             if (isFollowing) {
-                newWatchlist = watchlist.filter((s: string) => s !== symbol)
+                await removeFromWatchlist(symbol)
             } else {
-                newWatchlist = [...watchlist, symbol]
+                await addToWatchlist(symbol)
             }
-            localStorage.setItem('watchlist', JSON.stringify(newWatchlist))
             setIsFollowing(!isFollowing)
         } catch (err) {
-            console.error('Error updating watchlist:', err)
+            throw new Error(err instanceof Error ? err.message : "Failed to toggle follow")
         } finally {
             setIsTogglingFollow(false)
         }

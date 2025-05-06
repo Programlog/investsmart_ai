@@ -1,105 +1,20 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { ArrowUpRight, ArrowDownRight, RefreshCw, Trash2 } from "lucide-react"
 import Link from 'next/link'
-import useSWR from "swr"
-
-type WatchlistStock = {
-    symbol: string
-    name: string
-    price: number
-    change: number
-    changePercent: number
-}
-
-const fetcher = (url: string) => fetch(url).then(res => res.json())
+import { useWatchlist } from "@/hooks/use-watchlist"
 
 export default function WatchlistTab() {
     const [isRefreshing, setIsRefreshing] = useState(false)
-    const [watchlist, setWatchlist] = useState<WatchlistStock[]>([])
+    const { watchlist, isLoading, handleRefresh, handleRemoveStock } = useWatchlist()
 
-    // Effect to sync with localStorage
-    useEffect(() => {
-        const loadWatchlist = async () => {
-            try {
-                const symbols = JSON.parse(localStorage.getItem('watchlist') || '[]')
-                if (symbols.length > 0) {
-                    // Fetch latest data for all watchlist stocks
-                    const res = await fetch(`/api/market/multi-stock?symbols=${symbols.join(',')}`)
-                    const data = await res.json()
-
-                    const stocks: WatchlistStock[] = symbols.map((symbol: string) => {
-                        const bar = data.bars?.[symbol]
-                        return {
-                            symbol,
-                            name: symbol, // In a real app, we'd store/fetch the company names
-                            price: bar?.c || 0,
-                            change: bar ? bar.c - bar.o : 0,
-                            changePercent: bar ? ((bar.c - bar.o) / bar.o) * 100 : 0
-                        }
-                    })
-                    setWatchlist(stocks)
-                } else {
-                    setWatchlist([])
-                }
-            } catch (err) {
-                console.error('Error loading watchlist:', err)
-            }
-        }
-
-        // Load initial data
-        loadWatchlist()
-
-        // Subscribe to storage changes
-        const handleStorageChange = (e: StorageEvent) => {
-            if (e.key === 'watchlist') {
-                loadWatchlist()
-            }
-        }
-        window.addEventListener('storage', handleStorageChange)
-        return () => window.removeEventListener('storage', handleStorageChange)
-    }, [])
-
-    const handleRemoveStock = (symbol: string) => {
-        try {
-            const symbols = JSON.parse(localStorage.getItem('watchlist') || '[]')
-            const newSymbols = symbols.filter((s: string) => s !== symbol)
-            localStorage.setItem('watchlist', JSON.stringify(newSymbols))
-            setWatchlist(watchlist.filter(stock => stock.symbol !== symbol))
-        } catch (err) {
-            console.error('Error removing stock from watchlist:', err)
-        }
-    }
-
-    const handleRefresh = async () => {
+    const onRefresh = async () => {
         setIsRefreshing(true)
-        try {
-            const symbols = watchlist.map(stock => stock.symbol)
-            if (symbols.length > 0) {
-                const res = await fetch(`/api/market/multi-stock?symbols=${symbols.join(',')}`)
-                const data = await res.json()
-
-                const updatedWatchlist = watchlist.map(stock => {
-                    const bar = data.bars?.[stock.symbol]
-                    if (!bar) return stock
-
-                    return {
-                        ...stock,
-                        price: bar.c,
-                        change: bar.c - bar.o,
-                        changePercent: ((bar.c - bar.o) / bar.o) * 100
-                    }
-                })
-                setWatchlist(updatedWatchlist)
-            }
-        } catch (err) {
-            console.error('Error refreshing watchlist:', err)
-        } finally {
-            setIsRefreshing(false)
-        }
+        await handleRefresh()
+        setIsRefreshing(false)
     }
 
     return (
@@ -112,7 +27,7 @@ export default function WatchlistTab() {
                             Track the performance of stocks you're interested in
                         </CardDescription>
                     </div>
-                    <Button variant="outline" size="sm" onClick={handleRefresh} disabled={isRefreshing}>
+                    <Button variant="outline" size="sm" onClick={onRefresh} disabled={isRefreshing}>
                         {isRefreshing ? (
                             <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
                         ) : (
@@ -135,7 +50,15 @@ export default function WatchlistTab() {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {watchlist.length === 0 ? (
+                                    {isLoading ? (
+                                        <tr>
+                                            <td colSpan={5} className="p-4 text-center">
+                                                <div className="flex justify-center">
+                                                    <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent"></div>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ) : watchlist.length === 0 ? (
                                         <tr>
                                             <td colSpan={5} className="p-4 text-center text-muted-foreground">
                                                 You're not following any stocks yet.
