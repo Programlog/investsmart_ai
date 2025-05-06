@@ -1,171 +1,111 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from "recharts"
 import { Settings } from "lucide-react"
+import type { ChartDatum, StockChartProps, ChartPeriod } from "@/types/stock"
+import { previousClose } from "@/lib/utils"
 
-type ChartPeriod = "1D" | "5D" | "1M" | "6M" | "YTD" | "1Y" | "5Y" | "All"
-
-interface ChartDatum {
-    time: string
-    price: number
-    open: number
-    high: number
-    low: number
-    volume: number
+const getDateRange = (modifier: (date: Date) => void): { start: Date; end: Date } => {
+    const start = new Date()
+    modifier(start)
+    return { start, end: new Date() }
 }
 
-interface StockChartProps {
-    data: {
-        symbol: string
-        price: number
-        previousClose: number
+const getMarketHours = (date: Date) => {
+    const day = date.getDay()
+    const offset = day === 0 ? -2 : day === 6 ? -1 : 0
+    const adjustedDate = new Date(date)
+    adjustedDate.setDate(date.getDate() + offset)
+    return {
+        start: new Date(adjustedDate.setHours(9, 30, 0, 0)),
+        end: new Date(adjustedDate.setHours(16, 0, 0, 0))
     }
 }
 
-export default function StockChart({ data }: StockChartProps) {
+const CHART_PERIODS: { [key in ChartPeriod]: { timeframe: string; limit: number; getDates: (now: Date) => { start: Date; end: Date } } } = {
+    "1D": { timeframe: "5Min", limit: 78, getDates: getMarketHours },
+    "5D": { timeframe: "15Min", limit: 130, getDates: (now) => getDateRange(d => d.setDate(d.getDate() - 7)) },
+    "1M": { timeframe: "1Hour", limit: 160, getDates: (now) => getDateRange(d => d.setMonth(d.getMonth() - 1)) },
+    "6M": { timeframe: "1Day", limit: 130, getDates: (now) => getDateRange(d => d.setMonth(d.getMonth() - 6)) },
+    "YTD": { timeframe: "1Day", limit: 180, getDates: () => ({ start: new Date(new Date().getFullYear(), 0, 1), end: new Date() }) },
+    "1Y": { timeframe: "1Day", limit: 260, getDates: (now) => getDateRange(d => d.setFullYear(d.getFullYear() - 1)) },
+    "5Y": { timeframe: "1Week", limit: 260, getDates: (now) => getDateRange(d => d.setFullYear(d.getFullYear() - 5)) },
+    "All": { timeframe: "1Month", limit: 120, getDates: (now) => getDateRange(d => d.setFullYear(d.getFullYear() - 10)) }
+} as const
+
+export default function StockChart({ symbol }: StockChartProps) {
     const [activePeriod, setActivePeriod] = useState<ChartPeriod>("1D")
-    const [showEvents, setShowEvents] = useState(false)
     const [chartData, setChartData] = useState<ChartDatum[]>([])
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
 
-    // Fetch chart data from API
     useEffect(() => {
-        let isMounted = true
+        const controller = new AbortController()
+
         async function fetchChart() {
             setLoading(true)
             setError(null)
+
             try {
                 const now = new Date()
-                let startDate = new Date(now)
-                let endDate = new Date(now)
-                let timeframe = "5Min"
-                let limit = 100
+                const period = CHART_PERIODS[activePeriod]
+                const { start, end } = period.getDates(now)
 
-                switch (activePeriod) {
-                    case "1D": {
-                        // Find the most recent weekday (Mon-Fri)
-                        const day = now.getDay()
-                        let offset = 0
-                        if (day === 0) offset = -2 // Sunday -> Friday
-                        else if (day === 6) offset = -1 // Saturday -> Friday
-                        startDate = new Date(now)
-                        startDate.setDate(now.getDate() + offset)
-                        startDate.setHours(9, 30, 0, 0)
-                        endDate = new Date(now)
-                        endDate.setDate(now.getDate() + offset)
-                        endDate.setHours(16, 0, 0, 0)
-                        timeframe = "5Min"
-                        limit = 78
-                        break
-                    }
-                    case "5D":
-                        startDate.setDate(now.getDate() - 7)
-                        timeframe = "15Min"
-                        limit = 130
-                        break
-                    case "1M":
-                        startDate.setMonth(now.getMonth() - 1)
-                        timeframe = "1Hour"
-                        limit = 160
-                        break
-                    case "6M":
-                        startDate.setMonth(now.getMonth() - 6)
-                        timeframe = "1Day"
-                        limit = 130
-                        break
-                    case "YTD":
-                        startDate = new Date(now.getFullYear(), 0, 1)
-                        timeframe = "1Day"
-                        limit = 180
-                        break
-                    case "1Y":
-                        startDate.setFullYear(now.getFullYear() - 1)
-                        timeframe = "1Day"
-                        limit = 260
-                        break
-                    case "5Y":
-                        startDate.setFullYear(now.getFullYear() - 5)
-                        timeframe = "1Week"
-                        limit = 260
-                        break
-                    case "All":
-                        startDate.setFullYear(now.getFullYear() - 10)
-                        timeframe = "1Month"
-                        limit = 120
-                        break
-                    default:
-                        break
-                }
-
-                const start = startDate.toISOString()
-                const end = endDate.toISOString()
-                const url = `/api/market/stock?symbol=${encodeURIComponent(data.symbol)}&timeframe=${timeframe}&limit=${limit}&start=${encodeURIComponent(start)}&end=${encodeURIComponent(end)}`
-                const res = await fetch(url)
+                const url = `/api/market/stock?symbol=${encodeURIComponent(symbol)}&timeframe=${period.timeframe}&limit=${period.limit}&start=${encodeURIComponent(start.toISOString())}&end=${encodeURIComponent(end.toISOString())}`
+                const res = await fetch(url, { signal: controller.signal })
                 const json = await res.json()
+
                 if (!res.ok || !json.chartData) throw new Error(json.error || "Failed to load chart data")
-                if (isMounted) setChartData(json.chartData)
+                setChartData(json.chartData)
             } catch (err) {
-                if (isMounted) setError(err instanceof Error ? err.message : "Error loading chart data")
+                if (err instanceof Error && err.name !== 'AbortError') {
+                    setError(err.message)
+                }
             } finally {
-                if (isMounted) setLoading(false)
+                setLoading(false)
             }
         }
+
         fetchChart()
-        return () => { isMounted = false }
-    }, [data.symbol, activePeriod])
+        return () => controller.abort()
+    }, [symbol, activePeriod])
 
-    const lastPrice = chartData[chartData.length - 1]?.price || data.price
-    const startPrice = chartData[0]?.price || data.previousClose
-    const max = chartData.length > 0 ? Math.max(...chartData.map((d) => d.price)) * 1.001 : 0
-    const min = chartData.length > 0 ? Math.min(...chartData.map((d) => d.price)) * 0.999 : 0
+    const chartMetrics = useMemo(() => {
+        const lastPrice = chartData[chartData.length - 1]?.price || 0
+        const startPrice = chartData[0]?.price || 0
+        const max = Math.max(...chartData.map((d) => d.price), lastPrice) * 1.001
+        const min = Math.min(...chartData.map((d) => d.price), lastPrice) * 0.999
+        const prevClose = previousClose(chartData)
+        const isPositiveDay = lastPrice >= (activePeriod === "1D" ? prevClose : startPrice)
+        const referencePrice = activePeriod === "1D" ? prevClose : startPrice
 
-    // Select visible data points based on the period
-    const visibleData = (() => {
-        switch (activePeriod) {
-            case "1D":
-                return chartData
-            default:
-                return chartData
-        }
-    })()
-
-    const isPositiveDay = lastPrice >= startPrice
+        return { lastPrice, startPrice, max, min, prevClose, isPositiveDay, referencePrice }
+    }, [chartData, activePeriod])
 
     return (
         <Card>
             <CardContent className="pt-6">
                 <div className="flex flex-wrap justify-between items-center mb-6">
                     <div className="flex space-x-1 overflow-x-auto pb-1">
-                        {(["1D", "5D", "1M", "6M", "YTD", "1Y", "5Y", "All"] as ChartPeriod[]).map((period) => (
+                        {Object.keys(CHART_PERIODS).map((period) => (
                             <Button
                                 key={period}
                                 variant={activePeriod === period ? "default" : "ghost"}
                                 size="sm"
                                 className={`rounded-full h-8 px-3 ${activePeriod === period ? "bg-primary text-primary-foreground" : ""}`}
-                                onClick={() => setActivePeriod(period)}
+                                onClick={() => setActivePeriod(period as ChartPeriod)}
                             >
                                 {period}
                             </Button>
                         ))}
                     </div>
-                    <div className="flex items-center space-x-2">
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            className={`h-8 ${showEvents ? "bg-muted" : ""}`}
-                            onClick={() => setShowEvents(!showEvents)}
-                        >
-                            Key Events
-                        </Button>
-                        <Button variant="outline" size="sm" className="h-8">
-                            <Settings className="h-4 w-4 mr-2" />
-                            <span className="hidden sm:inline">Advanced Chart</span>
-                        </Button>
-                    </div>
+                    <Button variant="outline" size="sm" className="h-8">
+                        <Settings className="h-4 w-4 mr-2" />
+                        <span className="hidden sm:inline">Advanced Chart</span>
+                    </Button>
                 </div>
 
                 <div className="h-[350px] w-full">
@@ -177,11 +117,11 @@ export default function StockChart({ data }: StockChartProps) {
                         <div className="flex items-center justify-center h-full text-red-500">{error}</div>
                     ) : (
                         <ResponsiveContainer width="100%" height="100%">
-                            <LineChart data={visibleData} margin={{ top: 5, right: 5, left: 5, bottom: 5 }}>
+                            <LineChart data={chartData} margin={{ top: 5, right: 5, left: 5, bottom: 5 }}>
                                 <CartesianGrid strokeDasharray="3 3" vertical={false} />
                                 <XAxis dataKey="time" axisLine={false} tickLine={false} minTickGap={60} tick={{ fontSize: 12 }} />
                                 <YAxis
-                                    domain={[min, max]}
+                                    domain={[chartMetrics.min, chartMetrics.max]}
                                     axisLine={false}
                                     tickLine={false}
                                     tick={{ fontSize: 12 }}
@@ -199,11 +139,11 @@ export default function StockChart({ data }: StockChartProps) {
                                         boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
                                     }}
                                 />
-                                <ReferenceLine y={data.previousClose} stroke="red" strokeDasharray="3 3" />
+                                <ReferenceLine y={chartMetrics.referencePrice} stroke="#6b7280" strokeDasharray="3 3" />
                                 <Line
                                     type="monotone"
                                     dataKey="price"
-                                    stroke={isPositiveDay ? "#10b981" : "#ef4444"}
+                                    stroke={chartMetrics.isPositiveDay ? "#10b981" : "#ef4444"}
                                     dot={false}
                                     strokeWidth={2}
                                 />

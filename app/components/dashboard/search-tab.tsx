@@ -3,8 +3,8 @@
 import type React from "react"
 import { useState, useEffect } from "react"
 import { useDispatch, useSelector } from "react-redux"
-import { AppDispatch, RootState } from "@/store/store"
-import { fetchSearchResults, clearSearchResults } from "@/store/searchSlice"
+import { AppDispatch, RootState } from "@/lib/store/store"
+import { fetchSearchResults, clearSearchResults } from "@/lib/store/searchSlice"
 
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"

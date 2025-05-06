@@ -27,6 +27,7 @@ model User {
   curriculum      CurriculumProgress[]
   responses       Response[]
   recommendations Recommendation[]
+  watchlist       Watchlist[]
 }
 
 model Profile {
@@ -86,4 +87,17 @@ model CurriculumProgress {
   status      String    @default("unstarted") // Enum: unstarted, in_progress, completed
   completedAt DateTime? @map("completed_at")
   user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Watchlist {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  symbol    String
+  notes     String?
+  addedAt   DateTime @default(now()) @map("added_at")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, symbol])
+  @@index([userId])
+  @@index([symbol])
 }

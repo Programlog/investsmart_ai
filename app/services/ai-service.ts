@@ -1,23 +1,12 @@
 "use server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import {
+  GoogleGenAI,
+  Type,
+} from '@google/genai';
+
 import { unstable_cache } from "next/cache";
-
-export interface MarketIndex {
-  id: string;
-  name: string;
-  value: number;
-  change: number;
-  changePercent: number;
-}
-
-export interface TrendingAsset {
-  id: string;
-  symbol: string;
-  name: string;
-  price: number;
-  change: number;
-  changePercent: number;
-}
+import type { MarketIndex, TrendingAsset, StockRating, StockRatingRequest } from "@/types/stock";
 
 const geminiApiKey = process.env.GEMINI_API_KEY;
 
@@ -104,4 +93,57 @@ const getCachedMarketCommentary = unstable_cache(
   { revalidate: 60 * 60 * 5 } // 5 hours
 );
 
-export { getCachedMarketCommentary };
+
+const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+
+const config = {
+  temperature: 0,
+  responseMimeType: 'application/json',
+  responseSchema: {
+    type: Type.OBJECT,
+    properties: {
+      rating: {
+        type: Type.STRING,
+      },
+      reasoning: {
+        type: Type.STRING,
+      },
+    },
+  },
+};
+
+// Generate a buy/hold/sell rating for a stock using news and key metrics.
+export async function generateStockRating(stockRatingRequest: StockRatingRequest): Promise<StockRating> {
+  const { symbol, news, metrics } = stockRatingRequest;
+  const newsSummaries = news && news.length > 0
+    ? news.map((n) => `- ${n.title}: ${n.summary}`).join("\n")
+    : "No recent news.";
+
+  const prompt = `You are an advanced financial assistant. Given the following recent news and financial metrics for the stock ${symbol}, provide a JSON response with keys: Rating (buy, hold, or sell) and Reason (concise, <100 words):\n\nRecent News Headlines:\n${newsSummaries}\n\nKey Metrics:\n- Market Cap: ${metrics.marketCapitalization}\n- P/E (TTM): ${metrics.peTTM}\n- P/E (Annual): ${metrics.peAnnual}\n- EPS (TTM): ${metrics.epsTTM}\n- EPS (Annual): ${metrics.epsAnnual}\n- Dividend Yield: ${metrics.dividendYieldIndicatedAnnual}\n- Beta: ${metrics.beta}\n- 52-Week Range: ${metrics["52WeekLow"]} - ${metrics["52WeekHigh"]}\n- Profit Margin: ${metrics.netProfitMarginTTM}\n\nYour response must be valid JSON with exactly the format: {"Rating": "buy|hold|sell", "Reason": "your analysis"}. Capitalize "Rating" and "Reason" in the JSON keys.`;
+
+  const model = 'gemini-2.0-flash';
+  const contents = [
+    {
+      role: 'user',
+      parts: [
+        {
+          text: prompt,
+        },
+      ],
+    },
+  ];
+
+  const response = await ai.models.generateContent({
+    model,
+    config,
+    contents,
+  });
+
+  const text = response.text;
+  if (!text) {
+    throw new Error("No response text received");
+  }
+  return JSON.parse(text);
+}
+
+export { getCachedMarketCommentary }

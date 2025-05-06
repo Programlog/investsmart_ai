@@ -1,11 +1,14 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import DashboardHeader from "@/components/common/dashboard-header"
-import SearchTab from "@/components/dashboard/search-tab"
-import PortfolioTab from "@/components/dashboard/portfolio-tab"
-import MarketTab from "@/components/dashboard/market-tab"
-import AssistantTab from "@/components/dashboard/assistant-tab"
-import LearningTab from "@/components/dashboard/learning-tab"
-import NewsTab from "@/components/dashboard/news-tab"
+import {
+  SearchTab,
+  PortfolioTab,
+  MarketTab,
+  AssistantTab,
+  LearningTab,
+  NewsTab,
+  WatchlistTab
+} from "@/components/dashboard"
 import { currentUser } from "@clerk/nextjs/server"
 
 export default async function DashboardPage() {
@@ -26,9 +29,10 @@ export default async function DashboardPage() {
         </div>
 
         <Tabs defaultValue="portfolio" className="w-full">
-          <TabsList className="grid grid-cols-3 md:grid-cols-6 w-full mb-6">
+          <TabsList className="grid grid-cols-3 md:grid-cols-7 w-full mb-6">
             <TabsTrigger value="search">Search</TabsTrigger>
             <TabsTrigger value="portfolio">Portfolio</TabsTrigger>
+            <TabsTrigger value="watchlist">Watchlist</TabsTrigger>
             <TabsTrigger value="market">Market</TabsTrigger>
             <TabsTrigger value="assistant">Assistant</TabsTrigger>
             <TabsTrigger value="learning">Learning</TabsTrigger>
@@ -41,6 +45,10 @@ export default async function DashboardPage() {
 
           <TabsContent value="portfolio">
             <PortfolioTab />
+          </TabsContent>
+
+          <TabsContent value="watchlist">
+            <WatchlistTab />
           </TabsContent>
 
           <TabsContent value="market">

@@ -1,118 +1,173 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { Badge } from "@/components/ui/badge"
+import { useState, useEffect, useMemo } from "react"
+import Image from "next/image"
 import { Button } from "@/components/ui/button"
-import { Star, ArrowUpRight, ArrowDownRight, Info, Loader2 } from "lucide-react"
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import { Star, ArrowUpRight, ArrowDownRight, Info } from "lucide-react"
+import { HoverCard, HoverCardTrigger, HoverCardContent } from "@/components/ui/hover-card"
+import { addToWatchlist, removeFromWatchlist, getWatchlist } from "@/actions/watchlist"
+import type { LatestBarData, CompanyProfile, NewsItem, StockMetrics, StockRating } from "@/types/stock"
 
-interface LatestBarData {
-    symbol: string
-    close: number | null
-    timestamp: string | null
+const formatTimestamp = (isoTimestamp?: string | null) => {
+    if (!isoTimestamp) return "N/A"
+    return new Date(isoTimestamp).toLocaleTimeString("en-US", {
+        hour: "2-digit",
+        minute: "2-digit",
+        timeZoneName: "short"
+    })
 }
 
-interface StaticStockData {
-    symbol: string
-    name: string
-    exchange: string
-    currency: string
-    change: number
-    changePercent: number
-}
-
-export default function StockHeader({ data }: { data: StaticStockData }) {
+export default function StockHeader({ symbol }: { symbol: string }) {
     const [latestBarData, setLatestBarData] = useState<LatestBarData | null>(null)
-    const [isLoading, setIsLoading] = useState(true)
+    const [profile, setProfile] = useState<CompanyProfile | null>(null)
+    const [news, setNews] = useState<NewsItem[]>([])
+    const [metrics, setMetrics] = useState<StockMetrics | null>(null)
+    const [rating, setRating] = useState<StockRating | null>(null)
+    const [isLoadingRating, setIsLoadingRating] = useState(false)
     const [error, setError] = useState<string | null>(null)
-    const isPositiveChange = data.change >= 0
+    const [isFollowing, setIsFollowing] = useState(false)
+    const [isTogglingFollow, setIsTogglingFollow] = useState(false)
+    const isPositiveChange = latestBarData?.close ? latestBarData.close > 0 : false
 
     useEffect(() => {
-        if (!data.symbol) return
-
-        const fetchLatestBarData = async () => {
-            setError(null)
+        const fetchData = async () => {
             try {
-                // Add type=latestBar to the API request URL
-                const response = await fetch(`/api/market/stock?symbol=${data.symbol}&type=latestBar`)
-                if (!response.ok) {
-                    const errorData = await response.json().catch(() => ({}))
-                    throw new Error(errorData.error || `Failed to fetch latest bar data (${response.status})`)
-                }
-                const result = await response.json()
-                // Expect data under the 'latestBar' key
-                if (!result.latestBar || result.latestBar.close === undefined || result.latestBar.timestamp === undefined) {
-                    throw new Error("Invalid latest bar data received")
-                }
-                setLatestBarData(result.latestBar)
+                const [profileRes, barRes, newsRes, metricsRes] = await Promise.all([
+                    fetch(`/api/market/stock/header?symbol=${symbol}`),
+                    fetch(`/api/market/stock?symbol=${symbol}&type=latestBar`),
+                    fetch(`/api/market/stock/news?symbol=${symbol}`),
+                    fetch(`/api/market/stock/stats?symbol=${encodeURIComponent(symbol)}`)
+                ])
+
+                const profileData = await profileRes.json()
+                const barData = await barRes.json()
+                const newsData = await newsRes.json()
+                const metricsData = await metricsRes.json()
+
+                if (!profileRes.ok) throw new Error(profileData.error || `Failed to fetch profile (${profileRes.status})`)
+                if (!barRes.ok) throw new Error(barData.error || `Failed to fetch data (${barRes.status})`)
+                if (!barData.latestBar?.close) throw new Error("Invalid data received")
+
+                setProfile(profileData.profile)
+                setLatestBarData(barData.latestBar)
+                setNews(newsData.news || [])
+                setMetrics(metricsData.metrics)
+                setError(null)
             } catch (err) {
-                const errorMessage = (err instanceof Error) ? err.message : "An unknown error occurred";
-                setError(errorMessage);
-                setLatestBarData(null);
-            } finally {
-                if (isLoading) setIsLoading(false)
+                setError(err instanceof Error ? err.message : "An unknown error occurred")
             }
         }
 
-        fetchLatestBarData()
-        const intervalId = setInterval(fetchLatestBarData, 60000) // Refresh every 60 seconds
-
+        fetchData()
+        const intervalId = setInterval(fetchData, 120000) // 2 minutes
         return () => clearInterval(intervalId)
-        // Trigger effect only when data.symbol changes
-    }, [data.symbol])
+    }, [symbol])
 
-    // Update formatTimestamp to accept null
-    const formatTimestamp = (isoTimestamp?: string | null) => {
-        if (!isoTimestamp) return "N/A"
+    useEffect(() => {
+        const checkWatchlist = async () => {
+            try {
+                const watchlist = await getWatchlist()
+                setIsFollowing(watchlist.some(item => item.symbol === symbol))
+            } catch (error) {
+                console.error('Error checking watchlist:', error)
+            }
+        }
+        checkWatchlist()
+    }, [symbol])
+
+    const handleToggleFollow = async () => {
+        setIsTogglingFollow(true)
         try {
-            return new Date(isoTimestamp).toLocaleTimeString("en-US", {
-                hour: "2-digit",
-                minute: "2-digit",
-                second: "2-digit",
-                timeZoneName: "short",
-            })
-        } catch {
-            return "Invalid Date"
+            if (isFollowing) {
+                await removeFromWatchlist(symbol)
+            } else {
+                await addToWatchlist(symbol)
+            }
+            setIsFollowing(!isFollowing)
+        } catch (err) {
+            throw new Error(err instanceof Error ? err.message : "Failed to toggle follow")
+        } finally {
+            setIsTogglingFollow(false)
         }
     }
+
+    const handleGetRating = async () => {
+        if (!metrics || isLoadingRating) return
+
+        setIsLoadingRating(true)
+        try {
+            const response = await fetch('/api/ai/stock-rating', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ symbol, news, metrics }),
+            })
+
+            if (!response.ok) {
+                throw new Error('Failed to get stock rating')
+            }
+
+            const data = await response.json()
+            setRating(data)
+        } catch (err) {
+            console.error('Error getting stock rating:', err)
+            setError(err instanceof Error ? err.message : "Failed to get rating")
+        } finally {
+            setIsLoadingRating(false)
+        }
+    }
+
+    const ratingColorClass = useMemo(() => {
+        if (!rating?.rating) return "text-gray-600";
+        const ratingLower = rating.rating.toLowerCase();
+        if (ratingLower === "buy") return "text-green-600";
+        if (ratingLower === "sell") return "text-red-600";
+        return "text-gray-600";
+    }, [rating]);
 
     return (
         <div className="space-y-4">
             <div className="flex flex-col space-y-1">
-                {/* Remove tape display, use static data */}
                 <div className="text-sm text-muted-foreground">
-                    {`${data.exchange} • ${data.currency}`}
+                    {profile ? `${profile.exchange} • ${profile.currency} • ${profile.finnhubIndustry}` : "Loading..."}
                 </div>
                 <div className="flex flex-wrap items-center gap-3">
-                    <h1 className="text-3xl font-bold">
-                        {data.name} ({data.symbol})
-                    </h1>
-                    <Button variant="outline" size="sm" className="h-8 flex items-center">
-                        <Star className="mr-2 h-4 w-4" />
-                        Following
+                    <div className="flex items-center gap-3">
+                        {profile?.logo && (
+                            <Image
+                                src={profile.logo}
+                                alt={`${profile.name} logo`}
+                                width={32}
+                                height={32}
+                                className="h-8 w-8 rounded-full"
+                            />
+                        )}
+                        <h1 className="text-3xl font-bold">
+                            {profile?.name || "Loading..."} ({symbol})
+                        </h1>
+                    </div>
+                    <Button
+                        variant={isFollowing ? "default" : "outline"}
+                        size="sm"
+                        className="h-8 transition-all duration-200"
+                        onClick={handleToggleFollow}
+                        disabled={isTogglingFollow}
+                    >
+                        <Star className={`mr-2 h-4 w-4 ${isFollowing ? 'fill-current' : ''}`} />
+                        {isTogglingFollow ? 'Updating...' : (isFollowing ? 'Following' : 'Follow')}
                     </Button>
-                    <Button variant="outline" size="sm" className="h-8 flex items-center">
+                    <Button variant="outline" size="sm" className="h-8">
                         Compare
                     </Button>
                 </div>
             </div>
 
-            {/* Dynamic Price */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                     <div className="flex items-baseline">
-                        {isLoading ? (
-                            <Loader2 className="h-10 w-10 animate-spin text-muted-foreground" />
-                        ) : error ? (
-                            <span className="text-4xl font-bold text-red-600">Error</span>
-                        ) : // Use latestBarData.close for price display
-                            latestBarData?.close !== null && latestBarData?.close !== undefined ? (
-                                <span className="text-4xl font-bold">{latestBarData.close.toFixed(2)}</span>
-                            ) : (
-                                <span className="text-4xl font-bold text-muted-foreground">N/A</span>
-                            )}
-                        {/* Keep the change display as it comes from static data */}
-                        {!isLoading && !error && (
+                        <span className="text-4xl font-bold">
+                            {error ? "Error" : latestBarData?.close?.toFixed(2) ?? "N/A"}
+                        </span>
+                        {!error && latestBarData?.close && (
                             <div className={`ml-3 flex items-center text-lg ${isPositiveChange ? "text-green-600" : "text-red-600"}`}>
                                 {isPositiveChange ? (
                                     <ArrowUpRight className="h-5 w-5 mr-1" />
@@ -120,42 +175,63 @@ export default function StockHeader({ data }: { data: StaticStockData }) {
                                     <ArrowDownRight className="h-5 w-5 mr-1" />
                                 )}
                                 <span className="font-medium">
-                                    {isPositiveChange ? "+" : ""}
-                                    {data.change.toFixed(2)}
-                                </span>
-                                <span className="ml-1 font-medium">
-                                    ({isPositiveChange ? "+" : ""}
-                                    {data.changePercent.toFixed(2)}%)
+                                    {isPositiveChange ? "+" : "-"}
+                                    {Math.abs(latestBarData.close).toFixed(2)}
                                 </span>
                             </div>
                         )}
                     </div>
                     <p className="text-sm text-muted-foreground mt-1">
-                        {isLoading
-                            ? "Loading latest closing price..." // Update loading text
-                            : error
-                                ? `Error: ${error}`
-                                // Use latestBarData.timestamp for update time
-                                : `Closing price as of: ${formatTimestamp(latestBarData?.timestamp)}`}
+                        {error
+                            ? `Error: ${error}`
+                            : `Last updated: ${formatTimestamp(latestBarData?.timestamp)}`}
                     </p>
                 </div>
             </div>
 
-            {/* Tooltip */}
             <div className="flex flex-wrap gap-2 items-center">
-                <TooltipProvider>
-                    <Tooltip>
-                        <TooltipTrigger asChild>
-                            <Badge variant="outline" className="cursor-help rounded-md px-3 py-1 text-sm flex items-center">
-                                <Info className="h-3.5 w-3.5 mr-1" />
-                                Time to buy {data.symbol}?
-                            </Badge>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                            <p>Get AI-powered investment advice</p>
-                        </TooltipContent>
-                    </Tooltip>
-                </TooltipProvider>
+                <HoverCard>
+                    <HoverCardTrigger asChild>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={handleGetRating}
+                            disabled={isLoadingRating || !metrics}
+                            className="rounded-md px-3 py-1 text-sm flex items-center gap-2"
+                        >
+                            <Info className="h-3.5 w-3.5" />
+                            {isLoadingRating ? "Analyzing..." : "Time to buy?"}
+                        </Button>
+                    </HoverCardTrigger>
+                    {rating && (
+                        <HoverCardContent align="start" className="w-80">
+                            <div className="flex flex-col space-y-2">
+                                <div className="flex items-center gap-2">
+                                    <div className={`text-lg font-semibold ${ratingColorClass}`}>
+                                        {rating.rating || "No Rating"}
+                                    </div>
+                                    <div className="h-4 w-px bg-gray-200" />
+                                    <div className="text-sm text-muted-foreground">
+                                        AI Recommendation
+                                    </div>
+                                </div>
+                                <p className="text-sm text-muted-foreground">
+                                    {rating.reasoning || "No reasoning provided."}
+                                </p>
+                            </div>
+                        </HoverCardContent>
+                    )}
+                </HoverCard>
+                {profile?.weburl && (
+                    <a
+                        href={profile.weburl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-sm text-muted-foreground hover:underline"
+                    >
+                        Visit website →
+                    </a>
+                )}
             </div>
         </div>
     )

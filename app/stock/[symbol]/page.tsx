@@ -9,34 +9,17 @@ import StockChart from "@/components/stock/stock-chart"
 import StockStats from "@/components/stock/stock-stats"
 import StockNews from "@/components/stock/stock-news"
 import DashboardHeader from "@/components/common/dashboard-header"
-import { getStockData } from "@/lib/stock-service"
 
 export default function StockDetailPage() {
     const params = useParams()
-    const symbol = params.symbol as string
+    const symbol = (params.symbol as string).toUpperCase()
     const [isLoading, setIsLoading] = useState(true)
-    const [stockData, setStockData] = useState<any>(null)
-    const [error, setError] = useState<string | null>(null)
+    const [error, setError] = useState<Error | null>(null)
 
     useEffect(() => {
-        async function fetchStockData() {
-            setIsLoading(true)
-            try {
-                const data = await getStockData(symbol)
-                setStockData(data)
-                setError(null)
-            } catch (err) {
-                console.error("Error fetching stock data:", err)
-                setError("Failed to load stock data. Please try again later.")
-            } finally {
-                setIsLoading(false)
-            }
-        }
-
-        if (symbol) {
-            fetchStockData()
-        }
-    }, [symbol])
+        const timer = setTimeout(() => setIsLoading(false), 100)
+        return () => clearTimeout(timer)
+    }, [])
 
     if (error) {
         return (
@@ -52,7 +35,7 @@ export default function StockDetailPage() {
                         <CardContent className="flex items-center justify-center h-[400px]">
                             <div className="text-center">
                                 <h2 className="text-xl font-bold mb-2">Error</h2>
-                                <p className="text-muted-foreground">{error}</p>
+                                <p className="text-muted-foreground">{error.message}</p>
                             </div>
                         </CardContent>
                     </Card>
@@ -76,14 +59,14 @@ export default function StockDetailPage() {
                         <div className="h-12 w-12 rounded-full border-4 border-primary/30 border-t-primary animate-spin"></div>
                         <p className="mt-4 text-muted-foreground">Loading stock data...</p>
                     </div>
-                ) : stockData ? (
+                ) : (
                     <div className="space-y-6">
-                        <StockHeader data={stockData} />
-                        <StockChart data={stockData} />
-                        <StockStats data={stockData} />
+                        <StockHeader symbol={symbol} />
+                        <StockChart symbol={symbol} />
+                        <StockStats symbol={symbol} />
                         <StockNews symbol={symbol} />
                     </div>
-                ) : null}
+                )}
             </main>
         </div>
     )
