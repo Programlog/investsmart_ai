@@ -2,7 +2,6 @@
 
 import useSWR from 'swr'
 import { getWatchlist, removeFromWatchlist } from '@/actions/watchlist'
-import { useToast } from '@/hooks/use-toast'
 
 type WatchlistStock = {
     symbol: string
@@ -15,8 +14,6 @@ type WatchlistStock = {
 const fetcher = (url: string) => fetch(url).then(res => res.json())
 
 export function useWatchlist() {
-    const { toast } = useToast()
-
     // Fetch watchlist data from server
     const { data: watchlistData, mutate: mutateWatchlist, isLoading: isWatchlistLoading } = useSWR(
         '/api/watchlist',
@@ -30,7 +27,7 @@ export function useWatchlist() {
             `/api/market/multi-stock?symbols=${watchlistData.map((item: any) => item.symbol).join(',')}`
             : null,
         fetcher,
-        { refreshInterval: 30000 }
+        { refreshInterval: 60000 } // Refresh every 60 seconds
     )
 
     // Combine watchlist and market data
@@ -51,16 +48,8 @@ export function useWatchlist() {
                 mutateWatchlist(),
                 mutateMarket()
             ])
-            toast({
-                title: "Watchlist refreshed",
-                description: "Latest market data has been fetched."
-            })
         } catch (err) {
-            toast({
-                title: "Error",
-                description: "Failed to refresh watchlist data",
-                variant: "destructive"
-            })
+            console.error('Failed to refresh watchlist:', err)
         }
     }
 
@@ -68,16 +57,8 @@ export function useWatchlist() {
         try {
             await removeFromWatchlist(symbol)
             await mutateWatchlist()
-            toast({
-                title: "Stock removed",
-                description: `${symbol} has been removed from your watchlist.`
-            })
         } catch (err) {
-            toast({
-                title: "Error",
-                description: err instanceof Error ? err.message : "Failed to remove stock from watchlist",
-                variant: "destructive"
-            })
+            console.error('Failed to remove stock from watchlist:', err)
         }
     }
 
