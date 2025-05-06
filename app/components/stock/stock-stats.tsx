@@ -13,17 +13,18 @@ const StatItem = ({ label, value, className = '' }: { label: string; value: stri
 )
 
 const format = {
-    number: (num: number) => num.toFixed(2),
-    price: (num: number) => `$${num.toFixed(2)}`,
-    marketCap: (num: number) => {
+    number: (num: number | undefined) => num !== undefined ? num.toFixed(2) : 'N/A',
+    price: (num: number | undefined) => num !== undefined ? `$${num.toFixed(2)}` : 'N/A',
+    marketCap: (num: number | undefined) => {
+        if (num === undefined) return 'N/A';
         const value = num * 1000
         return value >= 1e9 ? `${(value / 1e9).toFixed(1)}T` :
             value >= 1e6 ? `${(value / 1e6).toFixed(1)}B` :
                 value >= 1e3 ? `${(value / 1e3).toFixed(1)}M` :
                     value.toFixed(2)
     },
-    volume: (num: number) => `${num.toFixed(1)}M`,
-    percent: (num: number) => `${num.toFixed(2)}%`
+    volume: (num: number | undefined) => num !== undefined ? `${num.toFixed(1)}M` : 'N/A',
+    percent: (num: number | undefined) => num !== undefined ? `${num.toFixed(2)}%` : 'N/A'
 }
 
 export default function StockStats({ symbol }: StockStatsProps) {
