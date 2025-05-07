@@ -244,12 +244,17 @@ export default function NewsTab() {
               <Card key={article.id} className="overflow-hidden" ref={isLastArticle ? lastArticleRef : null}>
                 <div className="md:flex">
                   {article.image && (
-                    <div className="md:w-1/3 h-48 md:h-auto">
-                      <Image
-                        src={article.image || "/placeholder.svg"}
-                        alt={article.title}
-                        className="w-full h-full object-cover"
-                      />
+                    <div className="md:w-1/3 relative">
+                      <div className="h-48 md:h-full relative">
+                        <Image
+                          src={article.image}
+                          alt={article.title}
+                          className="object-cover"
+                          fill
+                          sizes="(max-width: 768px) 100vw, 33vw"
+                          priority={index < 2}
+                        />
+                      </div>
                     </div>
                   )}
                   <div className={`p-6 ${article.image ? "md:w-2/3" : "w-full"}`}>
@@ -327,11 +332,14 @@ export default function NewsTab() {
           </DialogHeader>
 
           {selectedArticle?.image && (
-            <div className="w-full h-64 mb-4">
+            <div className="w-full h-64 relative mb-4">
               <Image
-                src={selectedArticle.image || "/placeholder.svg"}
+                src={selectedArticle.image}
                 alt={selectedArticle.title}
-                className="w-full h-full object-cover rounded-md"
+                className="rounded-md object-cover"
+                fill
+                sizes="(max-width: 1024px) 100vw, 1024px"
+                priority
               />
             </div>
           )}
