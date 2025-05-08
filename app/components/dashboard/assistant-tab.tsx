@@ -155,8 +155,18 @@ export default function AssistantTab() {
     }
   }
 
-  const handleResetConversation = () => {
+  const handleResetConversation = async () => {
+    // Reset the UI state
     dispatch(resetConversation())
+    
+    // Also reset the conversation context on the server
+    try {
+      await fetch("/api/ai/reset", {
+        method: "POST",
+      })
+    } catch (error) {
+      console.error("Failed to reset AI conversation context:", error)
+    }
   }
 
   const quickActions = [

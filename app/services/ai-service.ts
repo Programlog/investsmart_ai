@@ -70,8 +70,7 @@ const InvestmentProfileConfig = {
   },
 };
 
-
-const chat = ai.chats.create({
+let chat = ai.chats.create({
   model: 'gemini-2.0-flash',
   config: {
     systemInstruction: systemInstruction,
@@ -80,6 +79,19 @@ const chat = ai.chats.create({
     tools: [{ googleSearch: {} }],
   },
 });
+
+export async function resetChatSession(): Promise<void> {
+  chat = ai.chats.create({
+    model: 'gemini-2.0-flash',
+    config: {
+      systemInstruction: systemInstruction,
+      temperature: 0,
+      maxOutputTokens: 225,
+      tools: [{ googleSearch: {} }],
+    },
+  });
+  return Promise.resolve();
+}
 
 export async function generateText(prompt: string, onChunk?: (chunk: string) => void): Promise<string> {
   const result = await chat.sendMessageStream({ message: prompt });
@@ -144,7 +156,7 @@ export async function generateMarketCommentary(marketData: {
 
   const result = await chat.sendMessage({ message: prompt });
   if (!result.text) throw new Error("No response text received");
-  
+
   return result.text;
 }
 
