@@ -25,6 +25,30 @@ const getMarketHours = (date: Date) => {
     }
 }
 
+// Format timestamp based on the active time period
+const formatTimestamp = (timestamp: string, period: ChartPeriod): string => {
+    const date = new Date(timestamp)
+    
+    switch(period) {
+        case "1D":
+            return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        case "5D":
+            return `${date.toLocaleDateString([], { weekday: 'short' })} ${date.toLocaleTimeString([], { hour: '2-digit' })}`;
+        case "1M":
+            return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
+        case "6M":
+        case "YTD":
+        case "1Y":
+            return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
+        case "5Y":
+            return date.toLocaleDateString([], { month: 'short', year: '2-digit' });
+        case "All":
+            return date.toLocaleDateString([], { month: 'short', year: 'numeric' });
+        default:
+            return date.toLocaleDateString();
+    }
+}
+
 const CHART_PERIODS: { [key in ChartPeriod]: { timeframe: string; limit: number; getDates: (now: Date) => { start: Date; end: Date } } } = {
     "1D": { timeframe: "5Min", limit: 78, getDates: getMarketHours },
     "5D": { timeframe: "15Min", limit: 130, getDates: (now) => getDateRange(d => d.setDate(d.getDate() - 7)) },
@@ -85,6 +109,43 @@ export default function StockChart({ symbol }: StockChartProps) {
         return { lastPrice, startPrice, max, min, prevClose, isPositiveDay, referencePrice }
     }, [chartData, activePeriod])
 
+    // Calculate appropriate tick intervals based on the active period
+    const xAxisTickInterval = useMemo(() => {
+        switch(activePeriod) {
+            case "1D": return 10; // Every ~50 minutes for a trading day
+            case "5D": return 8;  // Every ~10 hours for 5 days
+            case "1M": return 6;  // Every ~5 days for a month
+            case "6M": 
+            case "YTD": 
+            case "1Y": return 8;  // Every ~1.5 months for a year
+            case "5Y": return 10; // Every ~6 months for 5 years
+            case "All": return 12; // Every ~10 months for 10 years
+            default: return 5;
+        }
+    }, [activePeriod]);
+
+    // Format tooltip timestamp
+    const formatTooltipTime = (timestamp: string) => {
+        const date = new Date(timestamp);
+        
+        if (activePeriod === "1D") {
+            return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        } else if (["5D", "1M"].includes(activePeriod)) {
+            return date.toLocaleString([], { 
+                month: 'short', 
+                day: 'numeric', 
+                hour: '2-digit', 
+                minute: '2-digit'
+            });
+        } else {
+            return date.toLocaleDateString([], { 
+                month: 'short', 
+                day: 'numeric', 
+                year: 'numeric' 
+            });
+        }
+    };
+
     return (
         <Card>
             <CardContent className="pt-6">
@@ -117,9 +178,19 @@ export default function StockChart({ symbol }: StockChartProps) {
                         <div className="flex items-center justify-center h-full text-red-500">{error}</div>
                     ) : (
                         <ResponsiveContainer width="100%" height="100%">
-                            <LineChart data={chartData} margin={{ top: 5, right: 5, left: 5, bottom: 5 }}>
+                            <LineChart data={chartData} margin={{ top: 5, right: 10, left: 20, bottom: 5 }}>
                                 <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                                <XAxis dataKey="time" axisLine={false} tickLine={false} minTickGap={60} tick={{ fontSize: 12 }} />
+                                <XAxis 
+                                    dataKey="time" 
+                                    axisLine={false} 
+                                    tickLine={false} 
+                                    minTickGap={60}
+                                    tick={{ fontSize: 12 }}
+                                    tickFormatter={(timestamp) => formatTimestamp(timestamp, activePeriod)}
+                                    interval={xAxisTickInterval}
+                                    padding={{ left: 10, right: 10 }}
+                                    allowDataOverflow={true}
+                                />
                                 <YAxis
                                     domain={[chartMetrics.min, chartMetrics.max]}
                                     axisLine={false}
@@ -131,7 +202,7 @@ export default function StockChart({ symbol }: StockChartProps) {
                                 />
                                 <Tooltip
                                     formatter={(value: number) => [`$${value}`, "Price"]}
-                                    labelFormatter={() => ""}
+                                    labelFormatter={(timestamp) => formatTooltipTime(timestamp)}
                                     contentStyle={{
                                         borderRadius: "6px",
                                         padding: "8px 12px",
