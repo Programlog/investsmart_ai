@@ -1,9 +1,5 @@
 "use server";
-import { GoogleGenerativeAI } from "@google/generative-ai";
-import {
-  GoogleGenAI,
-  Type,
-} from '@google/genai';
+import { GoogleGenAI, Type } from '@google/genai';
 
 import { unstable_cache } from "next/cache";
 import type { MarketIndex, TrendingAsset, StockRating, StockRatingRequest } from "@/types/stock";
@@ -19,25 +15,78 @@ const systemInstruction = `You are a helpful AI chatbot specialized in finance a
   Is there anything you'd like to discuss about investments or financial planning?' or 'While that's not my area of expertise, I can definitely help you with questions about market trends or investment strategies.' 
   Keep your responses concise and helpful within the scope of finance and basic greetings/farewells. Important: keep your responses under 100 words. Responses should be in plain text, emojis are acceptable.`
 
-const genAI = new GoogleGenerativeAI(geminiApiKey);
-const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash", systemInstruction: systemInstruction, })
-const chat = model.startChat({
-  history: [],
-  generationConfig: {
-    temperature: 0.0,
-    maxOutputTokens: 200,
+const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+
+const stockRatingConfig = {
+  temperature: 0,
+  responseMimeType: 'application/json',
+  responseSchema: {
+    type: Type.OBJECT,
+    properties: {
+      rating: {
+        type: Type.STRING,
+      },
+      reasoning: {
+        type: Type.STRING,
+      },
+    },
   },
-  tools: [{ google_search: {} }] as unknown as object[]
+};
+
+const InvestmentProfileConfig = {
+  temperature: 0,
+  responseMimeType: 'application/json',
+  responseSchema: {
+    type: Type.OBJECT,
+    properties: {
+      risk_tolerance: {
+        type: Type.STRING,
+      },
+      investment_goals: {
+        type: Type.STRING,
+      },
+      time_horizon: {
+        type: Type.INTEGER,
+      },
+      recommended_allocation: {
+        type: Type.OBJECT,
+        properties: {
+          stocks: {
+            type: Type.INTEGER,
+          },
+          bonds: {
+            type: Type.INTEGER,
+          },
+          cash: {
+            type: Type.INTEGER,
+          },
+        },
+      },
+    },
+  },
+};
+
+
+const chat = ai.chats.create({
+  model: 'gemini-2.0-flash',
+  config: {
+    systemInstruction: systemInstruction,
+    temperature: 0,
+    maxOutputTokens: 225,
+    tools: [{ googleSearch: {} }],
+  },
 });
 
 export async function generateText(prompt: string, onChunk?: (chunk: string) => void): Promise<string> {
-  const result = await chat.sendMessageStream(prompt)
+  const result = await chat.sendMessageStream({ message: prompt });
   let text = "";
 
-  for await (const chunk of result.stream) {
-    const chunkOfText = await chunk.text();
-    text += chunkOfText;
-    onChunk?.(chunkOfText);
+  for await (const chunk of result) {
+    if (chunk.text) {
+      const chunkOfText = chunk.text;
+      text += chunkOfText;
+      onChunk?.(chunkOfText);
+    }
   }
 
   return text;
@@ -46,7 +95,7 @@ export async function generateText(prompt: string, onChunk?: (chunk: string) => 
 export async function generateInvestmentProfile(answers: Record<string, string>) {
   try {
     const prompt = `
-      Based on these answers, generate a concise investment profile (type, description, recommended asset allocation as an array of {name, value, color}, and a brief explanation):
+      Based on these answers, generate a concise investment profile (type, description, recommended asset allocation, and a brief explanation):
       Risk tolerance: ${answers.risk_tolerance}
       Financial goals: ${answers.financial_goals}
       Investment experience: ${answers.investment_experience}
@@ -54,8 +103,12 @@ export async function generateInvestmentProfile(answers: Record<string, string>)
       Income range: ${answers.income_range}
       Respond in JSON format with keys: type, description, allocation, explanation.
     `;
-    const response = await generateText(prompt);
-    return JSON.parse(response);
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.0-flash',
+      contents: prompt,
+      config: InvestmentProfileConfig,
+    });
+    return JSON.parse(response.text || "{}");
   } catch (error) {
     console.error("Error generating investment profile:", error);
     throw error;
@@ -94,24 +147,6 @@ const getCachedMarketCommentary = unstable_cache(
 );
 
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-
-const config = {
-  temperature: 0,
-  responseMimeType: 'application/json',
-  responseSchema: {
-    type: Type.OBJECT,
-    properties: {
-      rating: {
-        type: Type.STRING,
-      },
-      reasoning: {
-        type: Type.STRING,
-      },
-    },
-  },
-};
-
 // Generate a buy/hold/sell rating for a stock using news and key metrics.
 export async function generateStockRating(stockRatingRequest: StockRatingRequest): Promise<StockRating> {
   const { symbol, news, metrics } = stockRatingRequest;
@@ -135,7 +170,7 @@ export async function generateStockRating(stockRatingRequest: StockRatingRequest
 
   const response = await ai.models.generateContent({
     model,
-    config,
+    config: stockRatingConfig,
     contents,
   });
 
