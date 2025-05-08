@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Star, ArrowUpRight, ArrowDownRight, Info } from "lucide-react"
 import { HoverCard, HoverCardTrigger, HoverCardContent } from "@/components/ui/hover-card"
 import { addToWatchlist, removeFromWatchlist, getWatchlist } from "@/actions/watchlist"
+import { Skeleton } from "@/components/ui/skeleton"
 import type { LatestBarData, CompanyProfile, NewsItem, StockMetrics, StockRating } from "@/types/stock"
 
 const formatTimestamp = (isoTimestamp?: string | null) => {
@@ -17,6 +18,40 @@ const formatTimestamp = (isoTimestamp?: string | null) => {
     })
 }
 
+// Skeleton component for the stock header
+const StockHeaderSkeleton = () => (
+    <div className="space-y-4">
+        <div className="flex flex-col space-y-1">
+            <Skeleton className="h-4 w-48" />
+            <div className="flex flex-wrap items-center gap-3">
+                <div className="flex items-center gap-3">
+                    <Skeleton className="h-8 w-8 rounded-full" />
+                    <Skeleton className="h-9 w-64" />
+                </div>
+                <Skeleton className="h-8 w-24" />
+                <Skeleton className="h-8 w-24" />
+            </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+                <div className="flex items-baseline">
+                    <Skeleton className="h-10 w-32" />
+                    <div className="ml-3 flex items-center">
+                        <Skeleton className="h-6 w-24" />
+                    </div>
+                </div>
+                <Skeleton className="h-4 w-40 mt-1" />
+            </div>
+        </div>
+
+        <div className="flex flex-wrap gap-2 items-center">
+            <Skeleton className="h-8 w-28" />
+            <Skeleton className="h-5 w-24" />
+        </div>
+    </div>
+)
+
 export default function StockHeader({ symbol }: { symbol: string }) {
     const [latestBarData, setLatestBarData] = useState<LatestBarData | null>(null)
     const [profile, setProfile] = useState<CompanyProfile | null>(null)
@@ -27,11 +62,13 @@ export default function StockHeader({ symbol }: { symbol: string }) {
     const [error, setError] = useState<string | null>(null)
     const [isFollowing, setIsFollowing] = useState(false)
     const [isTogglingFollow, setIsTogglingFollow] = useState(false)
+    const [loading, setLoading] = useState(true)
     const isPositiveChange = latestBarData?.close ? latestBarData.close > 0 : false
 
     useEffect(() => {
         const fetchData = async () => {
             try {
+                setLoading(true)
                 const [profileRes, barRes, newsRes, metricsRes] = await Promise.all([
                     fetch(`/api/market/stock/header?symbol=${symbol}`),
                     fetch(`/api/market/stock?symbol=${symbol}&type=latestBar`),
@@ -55,6 +92,8 @@ export default function StockHeader({ symbol }: { symbol: string }) {
                 setError(null)
             } catch (err) {
                 setError(err instanceof Error ? err.message : "An unknown error occurred")
+            } finally {
+                setLoading(false)
             }
         }
 
@@ -123,6 +162,11 @@ export default function StockHeader({ symbol }: { symbol: string }) {
         if (ratingLower === "sell") return "text-red-600";
         return "text-gray-600";
     }, [rating]);
+
+    // Show skeleton while loading
+    if (loading) {
+        return <StockHeaderSkeleton />
+    }
 
     return (
         <div className="space-y-4">

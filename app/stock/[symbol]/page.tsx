@@ -13,13 +13,7 @@ import DashboardHeader from "@/components/common/dashboard-header"
 export default function StockDetailPage() {
     const params = useParams()
     const symbol = (params.symbol as string).toUpperCase()
-    const [isLoading, setIsLoading] = useState(true)
     const [error, setError] = useState<Error | null>(null)
-
-    useEffect(() => {
-        const timer = setTimeout(() => setIsLoading(false), 100)
-        return () => clearTimeout(timer)
-    }, [])
 
     if (error) {
         return (
@@ -54,19 +48,12 @@ export default function StockDetailPage() {
                     </Button>
                 </div>
 
-                {isLoading ? (
-                    <div className="flex flex-col items-center justify-center py-12">
-                        <div className="h-12 w-12 rounded-full border-4 border-primary/30 border-t-primary animate-spin"></div>
-                        <p className="mt-4 text-muted-foreground">Loading stock data...</p>
-                    </div>
-                ) : (
-                    <div className="space-y-6">
-                        <StockHeader symbol={symbol} />
-                        <StockChart symbol={symbol} />
-                        <StockStats symbol={symbol} />
-                        <StockNews symbol={symbol} />
-                    </div>
-                )}
+                <div className="space-y-6">
+                    <StockHeader symbol={symbol} />
+                    <StockChart symbol={symbol} />
+                    <StockStats symbol={symbol} />
+                    <StockNews symbol={symbol} />
+                </div>
             </main>
         </div>
     )

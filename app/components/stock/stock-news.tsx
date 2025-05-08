@@ -4,9 +4,46 @@ import { useState, useEffect, useMemo } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Clock, ArrowDown, ArrowUp, ArrowUpRight } from "lucide-react"
+import { Skeleton } from "@/components/ui/skeleton"
 import Image from "next/image"
 import type { NewsItem } from "@/types/stock"
 import { NewsItemCard } from "@/components/stock/NewsItemCard"
+
+// Skeleton component for news items
+const NewsItemSkeleton = () => (
+    <div className="border-b pb-4 last:border-0 last:pb-0">
+        <div className="flex gap-4">
+            <Skeleton className="flex-shrink-0 w-20 h-20 rounded-md" />
+            <div className="flex-1 min-w-0 space-y-2">
+                <Skeleton className="h-5 w-full max-w-md" />
+                <div className="flex items-center gap-2">
+                    <Skeleton className="h-3 w-16" />
+                    <Skeleton className="h-3 w-3 rounded-full" />
+                    <Skeleton className="h-3 w-24" />
+                </div>
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-3/4" />
+            </div>
+        </div>
+    </div>
+)
+
+// Skeleton for the entire news section
+const NewsSkeletonLoader = () => (
+    <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle>Recent News</CardTitle>
+            <Skeleton className="h-8 w-24" />
+        </CardHeader>
+        <CardContent>
+            <div className="space-y-4">
+                {[...Array(5)].map((_, i) => (
+                    <NewsItemSkeleton key={i} />
+                ))}
+            </div>
+        </CardContent>
+    </Card>
+)
 
 export default function StockNews({ symbol }: { symbol: string }) {
     const [newsItems, setNewsItems] = useState<NewsItem[]>([])
@@ -17,6 +54,7 @@ export default function StockNews({ symbol }: { symbol: string }) {
     useEffect(() => {
         const fetchNews = async () => {
             try {
+                setIsLoading(true)
                 const res = await fetch(`/api/market/stock/news?symbol=${encodeURIComponent(symbol)}`)
                 if (!res.ok) throw new Error("Failed to fetch news")
                 const data = await res.json()
@@ -36,6 +74,10 @@ export default function StockNews({ symbol }: { symbol: string }) {
         showAllNews ? newsItems : newsItems.slice(0, 10),
         [newsItems, showAllNews]
     )
+
+    if (isLoading) {
+        return <NewsSkeletonLoader />
+    }
 
     if (error) {
         return (
@@ -67,14 +109,7 @@ export default function StockNews({ symbol }: { symbol: string }) {
                 )}
             </CardHeader>
             <CardContent>
-                {isLoading ? (
-                    <div className="flex justify-center py-8">
-                        <div
-                            className="h-8 w-8 rounded-full border-4 border-primary/30 border-t-primary animate-spin"
-                            aria-label="Loading news"
-                        />
-                    </div>
-                ) : displayedNews.length > 0 ? (
+                {displayedNews.length > 0 ? (
                     <div className="space-y-4">
                         {displayedNews.map(item => (
                             <NewsItemCard key={item.id} item={item} />
