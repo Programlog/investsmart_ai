@@ -1,4 +1,5 @@
 "use server";
+
 import { GoogleGenAI, Type } from '@google/genai';
 import { unstable_cache } from "next/cache";
 import type { MarketIndex, TrendingAsset, StockRating, StockRatingRequest, InvestmentProfile } from "@/types/stock";
@@ -119,9 +120,7 @@ export async function generateInvestmentProfile(answers: Record<string, string>)
     if (!response.text) {
       throw new Error("No response text received");
     }
-    const parsedResponse: InvestmentProfile = JSON.parse(response.text);
-    console.log("Parsed Investment Profile:", parsedResponse);
-    return parsedResponse;
+    return JSON.parse(response.text) as InvestmentProfile;
   } catch (error) {
     console.error("Error generating investment profile:", error);
     throw error;
@@ -170,21 +169,11 @@ export async function generateStockRating(stockRatingRequest: StockRatingRequest
   const prompt = `You are an advanced financial assistant. Given the following recent news and financial metrics for the stock ${symbol}, provide a JSON response with keys: Rating (buy, hold, or sell) and Reason (concise, <100 words):\n\nRecent News Headlines:\n${newsSummaries}\n\nKey Metrics:\n- Market Cap: ${metrics.marketCapitalization}\n- P/E (TTM): ${metrics.peTTM}\n- P/E (Annual): ${metrics.peAnnual}\n- EPS (TTM): ${metrics.epsTTM}\n- EPS (Annual): ${metrics.epsAnnual}\n- Dividend Yield: ${metrics.dividendYieldIndicatedAnnual}\n- Beta: ${metrics.beta}\n- 52-Week Range: ${metrics["52WeekLow"]} - ${metrics["52WeekHigh"]}\n- Profit Margin: ${metrics.netProfitMarginTTM}\n\nYour response must be valid JSON with exactly the format: {"Rating": "buy|hold|sell", "Reason": "your analysis"}. Capitalize "Rating" and "Reason" in the JSON keys.`;
 
   const model = 'gemini-2.0-flash';
-  const contents = [
-    {
-      role: 'user',
-      parts: [
-        {
-          text: prompt,
-        },
-      ],
-    },
-  ];
 
   const response = await ai.models.generateContent({
     model,
     config: stockRatingConfig,
-    contents,
+    contents: prompt,
   });
 
   const text = response.text;
