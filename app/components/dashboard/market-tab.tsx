@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo, useCallback } from "react"
 import useSWR from "swr"
+import Link from "next/link"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -521,7 +522,11 @@ export default function MarketTab() {
                       const bar = trendingBars?.bars?.[asset.symbol]
                       return (
                         <TableRow key={asset.id} className="transition-all duration-300">
-                          <TableCell className="font-medium">{asset.name}</TableCell>
+                          <TableCell className="font-medium">
+                            <Link href={`/stock/${asset.symbol}`} className="hover:underline text-primary">
+                              {asset.name}
+                            </Link>
+                          </TableCell>
                           <TableCell className="text-right">{bar ? bar.c.toFixed(2) : "-"}</TableCell>
                           <TableCell className="text-right">{bar ? (bar.c - bar.o >= 0 ? "+" : "") + (bar.c - bar.o).toFixed(2) : "-"}</TableCell>
                           <TableCell className="text-right">{asset.volume}</TableCell>
