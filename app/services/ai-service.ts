@@ -1,8 +1,7 @@
 "use server";
 import { GoogleGenAI, Type } from '@google/genai';
-
 import { unstable_cache } from "next/cache";
-import type { MarketIndex, TrendingAsset, StockRating, StockRatingRequest } from "@/types/stock";
+import type { MarketIndex, TrendingAsset, StockRating, StockRatingRequest, InvestmentProfile } from "@/types/stock";
 
 const geminiApiKey = process.env.GEMINI_API_KEY;
 
@@ -41,28 +40,37 @@ const InvestmentProfileConfig = {
     properties: {
       risk_tolerance: {
         type: Type.STRING,
+        description: "User's risk tolerance in a 3-4 words.",
       },
       investment_goals: {
         type: Type.STRING,
+        description: "User's investment goals in 3-4 words.",
       },
       time_horizon: {
         type: Type.INTEGER,
+        description: "User's investment time horizon in years.",
       },
       recommended_allocation: {
         type: Type.OBJECT,
         properties: {
           stocks: {
             type: Type.INTEGER,
+            description: "Recommended allocation in stocks as a percentage.",
           },
           bonds: {
             type: Type.INTEGER,
+            description: "Recommended allocation in bonds as a percentage.",
           },
           cash: {
             type: Type.INTEGER,
+            description: "Recommended allocation in cash as a percentage.",
           },
         },
+        description: "Recommended asset allocation. Total percentage should equal 100.",
+        required: ['stocks', 'bonds', 'cash'],
       },
     },
+    required: ['risk_tolerance', 'investment_goals', 'time_horizon', 'recommended_allocation'],
   },
 };
 
@@ -92,7 +100,7 @@ export async function generateText(prompt: string, onChunk?: (chunk: string) => 
   return text;
 }
 
-export async function generateInvestmentProfile(answers: Record<string, string>) {
+export async function generateInvestmentProfile(answers: Record<string, string>): Promise<InvestmentProfile> {
   try {
     const prompt = `
       Based on these answers, generate a concise investment profile (type, description, recommended asset allocation, and a brief explanation):
@@ -101,14 +109,19 @@ export async function generateInvestmentProfile(answers: Record<string, string>)
       Investment experience: ${answers.investment_experience}
       Time horizon: ${answers.time_horizon}
       Income range: ${answers.income_range}
-      Respond in JSON format with keys: type, description, allocation, explanation.
+      Note: for risk_tolerance and recommended_allocation output user-friendly strings.
     `;
     const response = await ai.models.generateContent({
       model: 'gemini-2.0-flash',
       contents: prompt,
       config: InvestmentProfileConfig,
     });
-    return JSON.parse(response.text || "{}");
+    if (!response.text) {
+      throw new Error("No response text received");
+    }
+    const parsedResponse: InvestmentProfile = JSON.parse(response.text);
+    console.log("Parsed Investment Profile:", parsedResponse);
+    return parsedResponse;
   } catch (error) {
     console.error("Error generating investment profile:", error);
     throw error;

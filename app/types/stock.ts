@@ -108,3 +108,14 @@ export interface StockRating {
     rating: string
     reasoning: string
 }
+
+export interface InvestmentProfile {
+    risk_tolerance: string;
+    investment_goals: string;
+    time_horizon: number;
+    recommended_allocation: {
+        stocks: number;
+        bonds: number;
+        cash: number;
+    };
+}
