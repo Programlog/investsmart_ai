@@ -4,11 +4,6 @@ import { GoogleGenAI, Type } from '@google/genai';
 import { unstable_cache } from "next/cache";
 import type { MarketIndex, TrendingAsset, StockRating, StockRatingRequest, InvestmentProfile } from "@/types/stock";
 
-const geminiApiKey = process.env.GEMINI_API_KEY;
-
-if (!geminiApiKey) {
-  throw new Error("GEMINI_API_KEY environment variable is not set.");
-}
 const systemInstruction = `You are a helpful AI chatbot specialized in finance and the economy. Your primary focus is to discuss topics such as investment strategies, market trends, and financial planning. 
   You can also engage in basic casual conversation, specifically responding to greetings and farewells or similar simple remarks. If a user asks about a topic outside of finance, 
   politely steer the conversation back to finance-related subjects. For example, you can say something like, 'That's an interesting topic, but let's get back to finance. 
@@ -144,10 +139,13 @@ export async function generateMarketCommentary(marketData: {
     `${asset.symbol}: $${asset.price.toFixed(2)} (${asset.changePercent >= 0 ? '+' : ''}${asset.changePercent.toFixed(2)}%)`
   ).join('\n')}
     
-    Provide a brief, insightful market commentary analyzing today's market performance and key trends. Include potential factors affecting the market and what investors should watch for. Do not write any introductions, dive straight into the commentary. Keep it concise and informative. Important: keep your response under 200 words. Responses should be in plain text, emojis are acceptable.';
+    Provide a brief, insightful market commentary analyzing today's market performance and key trends. Include potential factors affecting the market and what investors should watch for. Do not write any introductions, dive straight into the commentary. Keep it concise and informative. Important: keep your response under 300 words. Responses should be in plain text, emojis are acceptable.';
   `;
 
-  return generateText(prompt);
+  const result = await chat.sendMessage({ message: prompt });
+  if (!result.text) throw new Error("No response text received");
+  
+  return result.text;
 }
 
 const getCachedMarketCommentary = unstable_cache(
