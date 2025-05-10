@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
@@ -37,33 +37,37 @@ export default function StockSearch() {
     }
   }, [])
 
-  const debouncedSearch = useRef(
-    debounce(async (query: string) => {
-      if (!query || query.length < 2) {
-        setResults([])
-        setLoading(false)
-        return
-      }
+  // Memoize search function to prevent unnecessary re-creation
+  const searchStocks = useCallback(async (query: string) => {
+    if (!query || query.length < 2) {
+      setResults([])
+      setLoading(false)
+      return
+    }
 
-      try {
-        const response = await fetch(`/api/search/stock?q=${encodeURIComponent(query)}`)
-        if (!response.ok) {
-          throw new Error("Failed to fetch stock symbols")
-        }
-        
-        const data = await response.json()
-        setResults(data.results || [])
-        setShowResults(true)
-        setError(null)
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "An error occurred")
-        setResults([])
-      } finally {
-        setLoading(false)
+    try {
+      const response = await fetch(`/api/search/stock?q=${encodeURIComponent(query)}`)
+      if (!response.ok) {
+        throw new Error("Failed to fetch stock symbols")
       }
-    }, 300)
+      
+      const data = await response.json()
+      setResults(data.results)
+      setShowResults(true)
+      setError(null)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "An error occurred")
+      setResults([])
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  const debouncedSearch = useRef(
+    debounce((query: string) => searchStocks(query), 300)
   ).current
 
+  // Clean up debounced function on unmount
   useEffect(() => {
     return () => {
       debouncedSearch.cancel()

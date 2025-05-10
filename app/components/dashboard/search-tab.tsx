@@ -1,6 +1,5 @@
 "use client"
 
-import type React from "react"
 import { useState, useEffect } from "react"
 import { useDispatch, useSelector } from "react-redux"
 import { AppDispatch, RootState } from "@/lib/store/store"
@@ -29,16 +28,16 @@ export default function SearchTab() {
     error,
   } = useSelector((state: RootState) => state.search)
 
+  // Clear search results when component unmounts
   useEffect(() => {
     return () => {
       dispatch(clearSearchResults())
     }
   }, [dispatch])
 
-  const handleSearch = async (e: React.FormEvent) => {
+  const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
     if (!searchQuery.trim()) return
-
     dispatch(fetchSearchResults({ query: searchQuery, filter: activeFilter }))
   }
 
@@ -55,10 +54,7 @@ export default function SearchTab() {
       case "social":
         return <span className="px-2 py-1 rounded-full bg-purple-100 text-purple-800 text-xs font-medium">Social</span>
       case "definition":
-        return (
-          <span className="px-2 py-1 rounded-full bg-green-100 text-green-800 text-xs font-medium">Definition</span>
-        )
-      case "web":
+        return <span className="px-2 py-1 rounded-full bg-green-100 text-green-800 text-xs font-medium">Definition</span>
       default:
         return <span className="px-2 py-1 rounded-full bg-orange-100 text-orange-800 text-xs font-medium">Web</span>
     }
@@ -129,7 +125,7 @@ export default function SearchTab() {
             <div className="space-y-4">
               <Skeleton className="h-10 w-1/2" />
               <div className="grid gap-4">
-                {[...Array(3)].map((_, i) => (
+                {Array.from({ length: 3 }).map((_, i) => (
                   <Card key={i}>
                     <CardContent className="p-6 space-y-3">
                       <Skeleton className="h-6 w-3/4" />
@@ -148,46 +144,20 @@ export default function SearchTab() {
               <div className="bg-background sticky top-0 pt-2 pb-2 z-10">
                 <div className="bg-muted inline-block rounded-lg p-1">
                   <div className="flex space-x-1">
-                    <Button
-                      variant={activeFilter === "all" ? "default" : "ghost"}
-                      size="sm"
-                      onClick={() => setActiveFilter("all")}
-                      className="text-xs h-7"
-                    >
-                      All
-                    </Button>
-                    <Button
-                      variant={activeFilter === "article" ? "default" : "ghost"}
-                      size="sm"
-                      onClick={() => setActiveFilter("article")}
-                      className="text-xs h-7"
-                    >
-                      Articles
-                    </Button>
-                    <Button
-                      variant={activeFilter === "social" ? "default" : "ghost"}
-                      size="sm"
-                      onClick={() => setActiveFilter("social")}
-                      className="text-xs h-7"
-                    >
-                      Social
-                    </Button>
-                    <Button
-                      variant={activeFilter === "definition" ? "default" : "ghost"}
-                      size="sm"
-                      onClick={() => setActiveFilter("definition")}
-                      className="text-xs h-7"
-                    >
-                      Definitions
-                    </Button>
-                    <Button
-                      variant={activeFilter === "web" ? "default" : "ghost"}
-                      size="sm"
-                      onClick={() => setActiveFilter("web")}
-                      className="text-xs h-7"
-                    >
-                      Web
-                    </Button>
+                    {["all", "article", "social", "definition", "web"].map((filter) => (
+                      <Button
+                        key={filter}
+                        variant={activeFilter === filter ? "default" : "ghost"}
+                        size="sm"
+                        onClick={() => setActiveFilter(filter)}
+                        className="text-xs h-7"
+                      >
+                        {filter === "all" ? "All" : 
+                         filter === "article" ? "Articles" : 
+                         filter === "social" ? "Social" : 
+                         filter === "definition" ? "Definitions" : "Web"}
+                      </Button>
+                    ))}
                   </div>
                 </div>
               </div>

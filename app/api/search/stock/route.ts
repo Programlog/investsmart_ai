@@ -1,18 +1,45 @@
 import { NextRequest, NextResponse } from "next/server";
-import { z } from "zod";
+import { unstable_cache } from "next/cache";
 
-const searchStockSchema = z.object({
-  q: z.string().min(1, "Search query cannot be empty."),
-});
+interface FinnhubSearchResult {
+  symbol: string;
+  description: string;
+  type: string;
+  displaySymbol: string;
+}
+
+interface StockSearchResponse {
+  result?: FinnhubSearchResult[];
+  count?: number;
+}
+
+// Cache stock search results to reduce API calls
+const searchStocks = unstable_cache(
+  async (query: string, apiKey: string): Promise<StockSearchResponse> => {
+    const response = await fetch(
+      `https://finnhub.io/api/v1/search?q=${encodeURIComponent(query)}&exchange=US&token=${apiKey}`,
+      {
+        headers: { "Content-Type": "application/json" },
+      }
+    );
+    
+    if (!response.ok) {
+      throw new Error(`Finnhub API error: ${response.statusText}`);
+    }
+    
+    return await response.json();
+  },
+  ["finnhub-stock-search"],
+  { revalidate: 3600 } // Cache for 1 hour
+);
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const query = searchParams.get("q");
   
-  // Validate input
-  const validationResult = searchStockSchema.safeParse({ q: query });
-  if (!validationResult.success) {
-    return NextResponse.json({ error: validationResult.error.errors }, { status: 400 });
+  // Basic validation
+  if (!query || query.trim().length === 0) {
+    return NextResponse.json({ error: "Search query cannot be empty" }, { status: 400 });
   }
   
   const apiKey = process.env.FINNHUB_API_KEY;
@@ -22,22 +49,10 @@ export async function GET(req: NextRequest) {
   }
   
   try {
-    const response = await fetch(
-      `https://finnhub.io/api/v1/search?q=${encodeURIComponent(query as string)}&exchange=US&token=${apiKey}`,
-      {
-        headers: { "Content-Type": "application/json" },
-        next: { revalidate: 3600 } // Cache for 1 hour
-      }
-    );
+    const data = await searchStocks(query, apiKey);
     
-    if (!response.ok) {
-      throw new Error(`Finnhub API error: ${response.statusText}`);
-    }
-    
-    const data = await response.json();
-    
-    // Modify the response format to suit the frontend
-    const results = data.result?.map((item: any) => ({
+    // Transform the response for the frontend
+    const results = data.result?.map((item) => ({
       symbol: item.symbol,
       name: item.description,
       type: item.type,
