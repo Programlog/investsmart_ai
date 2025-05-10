@@ -10,8 +10,11 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Send, RefreshCw, Sparkles } from "lucide-react"
+import { Send, RefreshCw, Sparkles, AlertCircle } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { getInvestmentProfile } from "@/actions/getInvestmentProfile"
+import { InvestmentProfile } from "@/types/stock"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 
 export default function AssistantTab() {
   const dispatch = useDispatch()
@@ -23,6 +26,11 @@ export default function AssistantTab() {
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const promptInputRef = useRef<HTMLInputElement>(null)
 
+  // Investment profile state
+  const [investmentProfile, setInvestmentProfile] = useState<InvestmentProfile | null>(null)
+  const [profileLoading, setProfileLoading] = useState(false)
+  const [profileError, setProfileError] = useState<string | null>(null)
+
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
   }, [messages])
@@ -33,6 +41,34 @@ export default function AssistantTab() {
     }, 50)
     return () => clearTimeout(timer)
   }, [])
+
+  // Fetch investment profile on component mount
+  useEffect(() => {
+    fetchInvestmentProfile()
+  }, [])
+
+  // Function to fetch the investment profile
+  const fetchInvestmentProfile = async () => {
+    setProfileLoading(true)
+    setProfileError(null)
+
+    try {
+      console.log("Fetching investment profile...")
+      const result = await getInvestmentProfile()
+      console.log("Investment Profile:", result)
+
+      if (result.success && result.profile) {
+        setInvestmentProfile(result.profile)
+      } else {
+        setProfileError(result.error || "Failed to load investment profile")
+      }
+    } catch (err) {
+      setProfileError("An unexpected error occurred")
+      console.error("Error fetching investment profile:", err)
+    } finally {
+      setProfileLoading(false)
+    }
+  }
 
   const handleSendMessage = async () => {
     if (!input.trim()) return
@@ -99,21 +135,38 @@ export default function AssistantTab() {
 
   const handleRegenerateProfile = async () => {
     setIsRegenerating(true)
-    setTimeout(() => {
-      const assistantMessage: AssistantMessage = {
-        id: Date.now().toString(),
-        content:
-          "I've analyzed your questionnaire responses and investment history. Based on your moderate risk tolerance and long-term goals, I recommend a balanced portfolio with 60% stocks, 30% bonds, and 10% cash or cash equivalents. This allocation provides growth potential while maintaining stability. Would you like me to explain any part of this recommendation in more detail?",
-        role: "assistant",
-        timestamp: new Date().toISOString(),
+    try {
+      await fetchInvestmentProfile()
+
+      // Add a message to the chat about the regenerated profile
+      if (!profileError) {
+        const assistantMessage: AssistantMessage = {
+          id: Date.now().toString(),
+          content: "I've refreshed your investment profile based on your latest questionnaire responses.",
+          role: "assistant",
+          timestamp: new Date().toISOString(),
+        }
+        dispatch(addMessage(assistantMessage))
       }
-      dispatch(addMessage(assistantMessage))
+    } catch (error) {
+      console.error("Error regenerating profile:", error)
+    } finally {
       setIsRegenerating(false)
-    }, 2000)
+    }
   }
 
-  const handleResetConversation = () => {
+  const handleResetConversation = async () => {
+    // Reset the UI state
     dispatch(resetConversation())
+    
+    // Also reset the conversation context on the server
+    try {
+      await fetch("/api/ai/reset", {
+        method: "POST",
+      })
+    } catch (error) {
+      console.error("Failed to reset AI conversation context:", error)
+    }
   }
 
   const quickActions = [
@@ -140,6 +193,16 @@ export default function AssistantTab() {
       },
     },
   ]
+
+  // Renders the allocation bars for the investment profile
+  const renderAllocationBar = (value: number, label: string, color: string) => (
+    <div className="flex items-center gap-2 mt-1">
+      <div className="w-full bg-muted rounded-full h-2">
+        <div className={`${color} h-2 rounded-full transition-all duration-500 ease-in-out`} style={{ width: `${value}%` }}></div>
+      </div>
+      <span className="text-xs text-muted-foreground min-w-[70px] text-right">{value}% {label}</span>
+    </div>
+  )
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -257,46 +320,71 @@ export default function AssistantTab() {
         </Card>
 
         <Card className="border shadow-sm">
-          <CardHeader>
-            <CardTitle className="text-lg">Investment Profile</CardTitle>
-            <CardDescription>Your personalized investment profile</CardDescription>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <div>
+              <CardTitle className="text-lg">Investment Profile</CardTitle>
+              <CardDescription>Your personalized investment profile</CardDescription>
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleRegenerateProfile}
+              disabled={profileLoading}
+            >
+              <RefreshCw className={cn("h-4 w-4", profileLoading && "animate-spin")} />
+            </Button>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              <div>
-                <h3 className="text-sm font-medium">Risk Tolerance</h3>
-                <p className="text-sm text-muted-foreground">Moderate</p>
+            {profileError ? (
+              <Alert variant="destructive" className="mb-4">
+                <AlertCircle className="h-4 w-4 mr-2" />
+                <AlertDescription>
+                  {profileError}
+                </AlertDescription>
+              </Alert>
+            ) : profileLoading ? (
+              <div className="space-y-4 animate-pulse">
+                <div className="h-4 bg-muted rounded w-3/4"></div>
+                <div className="h-4 bg-muted rounded w-1/2"></div>
+                <div className="h-4 bg-muted rounded w-5/6"></div>
+                <div className="h-2 bg-muted rounded w-full mt-4"></div>
+                <div className="h-2 bg-muted rounded w-full"></div>
+                <div className="h-2 bg-muted rounded w-full"></div>
               </div>
-              <div>
-                <h3 className="text-sm font-medium">Investment Goals</h3>
-                <p className="text-sm text-muted-foreground">Long-term growth, Retirement</p>
-              </div>
-              <div>
-                <h3 className="text-sm font-medium">Time Horizon</h3>
-                <p className="text-sm text-muted-foreground">10+ years</p>
-              </div>
-              <div>
-                <h3 className="text-sm font-medium">Recommended Allocation</h3>
-                <div className="flex items-center gap-2 mt-1">
-                  <div className="w-full bg-muted rounded-full h-2">
-                    <div className="bg-blue-500 h-2 rounded-full" style={{ width: "60%" }}></div>
-                  </div>
-                  <span className="text-xs text-muted-foreground">60% Stocks</span>
+            ) : investmentProfile ? (
+              <div className="space-y-4">
+                <div>
+                  <h3 className="text-sm font-medium">Risk Tolerance</h3>
+                  <p className="text-sm text-muted-foreground">{investmentProfile.risk_tolerance}</p>
                 </div>
-                <div className="flex items-center gap-2 mt-1">
-                  <div className="w-full bg-muted rounded-full h-2">
-                    <div className="bg-purple-500 h-2 rounded-full" style={{ width: "30%" }}></div>
-                  </div>
-                  <span className="text-xs text-muted-foreground">30% Bonds</span>
+                <div>
+                  <h3 className="text-sm font-medium">Investment Goals</h3>
+                  <p className="text-sm text-muted-foreground">{investmentProfile.investment_goals}</p>
                 </div>
-                <div className="flex items-center gap-2 mt-1">
-                  <div className="w-full bg-muted rounded-full h-2">
-                    <div className="bg-green-500 h-2 rounded-full" style={{ width: "10%" }}></div>
-                  </div>
-                  <span className="text-xs text-muted-foreground">10% Cash</span>
+                <div>
+                  <h3 className="text-sm font-medium">Time Horizon</h3>
+                  <p className="text-sm text-muted-foreground">{investmentProfile.time_horizon} years</p>
+                </div>
+                <div>
+                  <h3 className="text-sm font-medium mb-2">Recommended Allocation</h3>
+                  {renderAllocationBar(investmentProfile.recommended_allocation.stocks, "Stocks", "bg-blue-500")}
+                  {renderAllocationBar(investmentProfile.recommended_allocation.bonds, "Bonds", "bg-purple-500")}
+                  {renderAllocationBar(investmentProfile.recommended_allocation.cash, "Cash", "bg-green-500")}
                 </div>
               </div>
-            </div>
+            ) : (
+              <div className="text-center py-4">
+                <p className="text-sm text-muted-foreground">Complete the questionnaire to generate your investment profile</p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="mt-2"
+                  onClick={handleRegenerateProfile}
+                >
+                  Generate Profile
+                </Button>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>

@@ -58,6 +58,15 @@ export interface TrendingAsset {
     sentiment: "positive" | "neutral" | "negative"
 }
 
+export type MarketNewsItem = {
+    id: string
+    headline: string
+    source: string
+    summary: string
+    datetime: number
+    url: string
+  }
+
 // News related interfaces
 export interface NewsItem {
     id: string | number
@@ -97,6 +106,13 @@ export interface CompanyProfile {
     weburl: string
 }
 
+export interface StockSearchResult {
+    symbol: string
+    name: string
+    type: string
+    displaySymbol: string
+}
+
 // Stock rating payload
 export interface StockRatingRequest {
     symbol: string
@@ -107,4 +123,15 @@ export interface StockRatingRequest {
 export interface StockRating {
     rating: string
     reasoning: string
+}
+
+export interface InvestmentProfile {
+    risk_tolerance: string;
+    investment_goals: string;
+    time_horizon: number;
+    recommended_allocation: {
+        stocks: number;
+        bonds: number;
+        cash: number;
+    };
 }

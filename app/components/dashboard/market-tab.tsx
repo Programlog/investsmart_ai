@@ -1,7 +1,8 @@
 "use client"
 
-import { useState, useEffect, useMemo, useCallback } from "react"
+import { useState, useEffect, useMemo } from "react"
 import useSWR from "swr"
+import Link from "next/link"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -10,6 +11,7 @@ import { ArrowUpRight, ArrowDownRight, RefreshCw } from "lucide-react"
 import { getCachedMarketCommentary } from "@/services/ai-service"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import type { MarketIndex, TrendingAsset, MarketNewsItem } from "@/types/stock"
 
 const SYMBOL_MAP_FINNHUB = {
   sp500: "^GSPC",
@@ -25,34 +27,7 @@ const SYMBOL_MAP_ALPHA_VANTAGE = {
   russell: "IWM",
 }
 
-type MarketIndex = {
-  id: string
-  name: string
-  value: number
-  change: number
-  changePercent: number
-}
-
-type TrendingAsset = {
-  id: string
-  symbol: string
-  name: string
-  price: number
-  change: number
-  changePercent: number
-  volume: string
-  sentiment: "positive" | "neutral" | "negative"
-}
-
-type NewsItem = {
-  id: string
-  headline: string
-  source: string
-  summary: string
-  datetime: number
-  url: string
-}
-
+// Utility functions
 const formatTime = (unix: number): string => {
   const date = new Date(unix * 1000)
   return date.toLocaleString(undefined, {
@@ -101,139 +76,146 @@ const formatSession = (session: string): string => {
   }
 }
 
+// SWR fetcher
 const fetcher = (url: string) => fetch(url).then(res => res.json())
+
+// Default market indices data
+const DEFAULT_INDICES: MarketIndex[] = [
+  { id: "sp500", name: "S&P 500", value: 5123.45, change: 23.45, changePercent: 0.46 },
+  { id: "dow", name: "Dow Jones", value: 38765.32, change: -125.68, changePercent: -0.32 },
+  { id: "nasdaq", name: "NASDAQ", value: 16234.78, change: 78.92, changePercent: 0.49 },
+  { id: "russell", name: "Russell 2000", value: 2045.67, change: 12.34, changePercent: 0.61 },
+]
 
 export default function MarketTab() {
   const [isInitialLoading, setIsInitialLoading] = useState(true)
   const [isRefreshing, setIsRefreshing] = useState(false)
-  const [marketIndices, setMarketIndices] = useState<MarketIndex[]>([])
-  const [selectedIndex, setSelectedIndex] = useState<string | null>(null)
+  const [marketIndices, setMarketIndices] = useState<MarketIndex[]>(DEFAULT_INDICES)
+  const [selectedIndex, setSelectedIndex] = useState<string>(
+    typeof window !== 'undefined' ? localStorage.getItem("market_selected_index") || "sp500" : "sp500"
+  )
   const [isCommentaryLoading, setIsCommentaryLoading] = useState(false)
   const [commentaryError, setCommentaryError] = useState<string | null>(null)
   const [marketCommentary, setMarketCommentary] = useState<string>("")
   const [showAllTrending, setShowAllTrending] = useState(false)
 
-  // Persist selectedIndex in localStorage for state retention
-  useEffect(() => {
-    const stored = localStorage.getItem("market_selected_index")
-    if (stored) setSelectedIndex(stored)
-  }, [])
-  useEffect(() => {
-    if (selectedIndex) localStorage.setItem("market_selected_index", selectedIndex)
-  }, [selectedIndex])
-
-  // Use SWR for all API data fetching and caching
+  // SWR data fetching
   const { data: trendingAssets, isLoading: trendingAssetsLoading, error: trendingAssetsError } = useSWR(
     "/api/market/trending",
     fetcher,
     { revalidateOnFocus: false }
   )
-  // Fetch latest prices for trending assets
-  const trendingSymbols = trendingAssets?.map((a: TrendingAsset) => a.symbol).join(",")
+  
+  // Fetch latest prices for trending assets (only when trendingAssets is available)
+  const trendingSymbols = useMemo(() => trendingAssets?.map((a: TrendingAsset) => a.symbol).join(","), [trendingAssets])
+  
   const { data: trendingBars, isLoading: trendingBarsLoading, error: trendingBarsError } = useSWR(
     trendingSymbols ? `/api/market/multi-stock?symbols=${trendingSymbols}` : null,
     fetcher,
     { revalidateOnFocus: false }
   )
+  
   const { data: marketNews, isLoading: newsLoading, error: newsError } = useSWR(
     "/api/market/news",
     fetcher,
     { revalidateOnFocus: false }
   )
+  
   const { data: marketStatus, isLoading: marketStatusLoading, error: marketStatusError } = useSWR(
     "/api/market/status",
     fetcher,
     { revalidateOnFocus: false }
   )
+  
   const { data: indexQuotes, isLoading: indexQuotesLoading, error: indexQuotesError } = useSWR(
     "/api/market/index-quote",
     fetcher,
     { revalidateOnFocus: false }
   )
-  // Chart data depends on selectedIndex
-  const chartSymbol = selectedIndex ? SYMBOL_MAP_ALPHA_VANTAGE[selectedIndex as keyof typeof SYMBOL_MAP_ALPHA_VANTAGE] || "SPY" : "SPY"
+  
+  // Chart data depends on selectedIndex (memoized)
+  const chartSymbol = useMemo(() => 
+    SYMBOL_MAP_ALPHA_VANTAGE[selectedIndex as keyof typeof SYMBOL_MAP_ALPHA_VANTAGE] || "SPY", 
+    [selectedIndex]
+  )
+  
   const { data: lineChartData, isLoading: lineChartLoading, error: lineChartError } = useSWR(
-    selectedIndex ? `/api/market/daily?symbol=${chartSymbol}` : null,
+    `/api/market/daily?symbol=${chartSymbol}`,
     fetcher,
     { revalidateOnFocus: false }
   )
 
-  // Market indices are static for now, but could be fetched with SWR if needed
+  // Save selected index to localStorage
   useEffect(() => {
-    const indices: MarketIndex[] = [
-      { id: "sp500", name: "S&P 500", value: 5123.45, change: 23.45, changePercent: 0.46 },
-      { id: "dow", name: "Dow Jones", value: 38765.32, change: -125.68, changePercent: -0.32 },
-      { id: "nasdaq", name: "NASDAQ", value: 16234.78, change: 78.92, changePercent: 0.49 },
-      { id: "russell", name: "Russell 2000", value: 2045.67, change: 12.34, changePercent: 0.61 },
-    ]
-    setMarketIndices(indices)
-    if (!selectedIndex) setSelectedIndex(indices[0].id)
+    if (typeof window !== 'undefined') {
+      localStorage.setItem("market_selected_index", selectedIndex)
+    }
   }, [selectedIndex])
 
+  // Track initial loading state
   useEffect(() => {
-    if (
-      marketIndices.length > 0 &&
-      !indexQuotesLoading &&
-      !trendingAssetsLoading &&
-      !newsLoading &&
-      !marketStatusLoading
-    ) {
+    if (!indexQuotesLoading && !trendingAssetsLoading && !newsLoading && !marketStatusLoading) {
       setIsInitialLoading(false)
     }
-  }, [marketIndices.length, indexQuotesLoading, trendingAssetsLoading, newsLoading, marketStatusLoading])
+  }, [indexQuotesLoading, trendingAssetsLoading, newsLoading, marketStatusLoading])
 
-  const updateMarketCommentary = useCallback(async () => {
-    if (isInitialLoading || trendingAssetsLoading || !marketIndices.length || !trendingAssets?.length) {
-      return
+  // Generate market commentary when data is available
+  useEffect(() => {
+    const generateCommentary = async () => {
+      if (isInitialLoading || trendingAssetsLoading || !trendingAssets?.length) {
+        return
+      }
+
+      setIsCommentaryLoading(true)
+      setCommentaryError(null)
+      
+      try {
+        const commentaryAssets = trendingAssets.map((asset: TrendingAsset) => ({
+          ...asset,
+          price: asset.price ?? 0,
+          change: asset.change ?? 0,
+          changePercent: asset.changePercent ?? 0,
+          volume: asset.volume ?? "N/A",
+          sentiment: asset.sentiment ?? "neutral",
+        }))
+
+        const commentary = await getCachedMarketCommentary({
+          indices: marketIndices,
+          trendingAssets: commentaryAssets,
+        })
+        
+        setMarketCommentary(commentary)
+      } catch (error) {
+        console.error("Error generating market commentary:", error)
+        setCommentaryError("Failed to generate market commentary.")
+        setMarketCommentary("")
+      } finally {
+        setIsCommentaryLoading(false)
+      }
     }
 
-    setIsCommentaryLoading(true)
-    setCommentaryError(null)
-    try {
-      const commentaryAssets = trendingAssets.map((asset: TrendingAsset) => ({
-        ...asset,
-        price: asset.price ?? 0,
-        change: asset.change ?? 0,
-        changePercent: asset.changePercent ?? 0,
-        volume: asset.volume ?? "N/A",
-        sentiment: asset.sentiment ?? "neutral",
-      }))
-
-      const commentary = await getCachedMarketCommentary({
-        indices: marketIndices,
-        trendingAssets: commentaryAssets,
-      })
-      setMarketCommentary(commentary)
-    } catch (error) {
-      console.error("Error generating market commentary:", error)
-      setCommentaryError("Failed to generate market commentary.")
-      setMarketCommentary("")
-    } finally {
-      setIsCommentaryLoading(false)
-    }
+    generateCommentary()
   }, [marketIndices, trendingAssets, isInitialLoading, trendingAssetsLoading])
 
-  useEffect(() => {
-    updateMarketCommentary()
-  }, [updateMarketCommentary])
-
-  const handleRefresh = useCallback(async () => {
+  // Handle refresh button click
+  const handleRefresh = () => {
     setIsRefreshing(true)
 
-    await new Promise((resolve) => setTimeout(resolve, 1000))
+    // Simulate refresh with timeout
+    setTimeout(() => {
+      setMarketIndices((prev) =>
+        prev.map((index) => ({
+          ...index,
+          value: index.value * (1 + (Math.random() * 0.01 - 0.005)),
+          change: index.change * (1 + (Math.random() * 0.1 - 0.05)),
+          changePercent: index.changePercent * (1 + (Math.random() * 0.1 - 0.05)),
+        }))
+      )
+      setIsRefreshing(false)
+    }, 800)
+  }
 
-    setMarketIndices((prev) =>
-      prev.map((index) => ({
-        ...index,
-        value: index.value * (1 + (Math.random() * 0.01 - 0.005)),
-        change: index.change * (1 + (Math.random() * 0.1 - 0.05)),
-        changePercent: index.changePercent * (1 + (Math.random() * 0.1 - 0.05)),
-      })),
-    )
-
-    setIsRefreshing(false)
-  }, [])
-
+  // Memoized values
   const displayedTrendingAssets = useMemo(() => {
     if (!trendingAssets) return []
     return showAllTrending ? trendingAssets : trendingAssets.slice(0, 5)
@@ -241,9 +223,10 @@ export default function MarketTab() {
 
   const selectedIndexData = useMemo(
     () => marketIndices.find((index) => index.id === selectedIndex),
-    [marketIndices, selectedIndex],
+    [marketIndices, selectedIndex]
   )
 
+  // Render loading skeleton
   if (isInitialLoading) {
     return (
       <div className="space-y-6 animate-pulse">
@@ -397,7 +380,7 @@ export default function MarketTab() {
                 </div>
               )}
               {lineChartError ? (
-                <div className="flex items-center justify-center h-full text-red-500 text-sm">{lineChartError}</div>
+                <div className="flex items-center justify-center h-full text-red-500 text-sm">Failed to load chart data</div>
               ) : lineChartData?.length === 0 && !lineChartLoading ? (
                 <div className="flex items-center justify-center h-full text-muted-foreground text-sm">
                   No chart data available.
@@ -449,18 +432,12 @@ export default function MarketTab() {
                 ))}
               </div>
             ) : newsError ? (
-              <div className="text-red-500 text-sm py-4 text-center">{newsError}</div>
+              <div className="text-red-500 text-sm py-4 text-center">Failed to load news</div>
             ) : marketNews?.length === 0 ? (
               <div className="text-center text-muted-foreground text-sm py-4">No news available.</div>
             ) : (
-              <div
-                className="space-y-4 max-h-[420px] overflow-y-auto pr-2 transition-all scrollbar-thin scrollbar-thumb-muted-foreground/40 scrollbar-track-transparent hover:scrollbar-thumb-muted-foreground/70"
-                style={{
-                  scrollbarWidth: "thin",
-                  scrollbarColor: "rgba(107,114,128,0.4) transparent",
-                }}
-              >
-                {marketNews.slice(0, 10).map((item: NewsItem) => (
+              <div className="space-y-4 max-h-[420px] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-muted-foreground/40 scrollbar-track-transparent hover:scrollbar-thumb-muted-foreground/70">
+                {marketNews.slice(0, 10).map((item: MarketNewsItem) => (
                   <div key={item.id} className="border-b pb-3 last:border-0">
                     <a
                       href={item.url}
@@ -496,9 +473,9 @@ export default function MarketTab() {
               <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent"></div>
             </div>
           ) : trendingAssetsError || trendingBarsError ? (
-            <div className="text-red-500 text-sm py-4 text-center">{trendingAssetsError || trendingBarsError}</div>
+            <div className="text-red-500 text-sm py-4 text-center">Failed to load trending assets</div>
           ) : (
-            <div className="rounded-md border transition-all duration-300">
+            <div className="rounded-md border">
               <Table>
                 <TableHeader>
                   <TableRow className="bg-muted/50 hover:bg-muted/50">
@@ -520,8 +497,12 @@ export default function MarketTab() {
                     displayedTrendingAssets.map((asset: TrendingAsset) => {
                       const bar = trendingBars?.bars?.[asset.symbol]
                       return (
-                        <TableRow key={asset.id} className="transition-all duration-300">
-                          <TableCell className="font-medium">{asset.name}</TableCell>
+                        <TableRow key={asset.id}>
+                          <TableCell className="font-medium">
+                            <Link href={`/stock/${asset.symbol}`} className="hover:underline text-primary">
+                              {asset.name}
+                            </Link>
+                          </TableCell>
                           <TableCell className="text-right">{bar ? bar.c.toFixed(2) : "-"}</TableCell>
                           <TableCell className="text-right">{bar ? (bar.c - bar.o >= 0 ? "+" : "") + (bar.c - bar.o).toFixed(2) : "-"}</TableCell>
                           <TableCell className="text-right">{asset.volume}</TableCell>
@@ -537,8 +518,7 @@ export default function MarketTab() {
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="transition-all duration-200"
-                    onClick={() => setShowAllTrending((v) => !v)}
+                    onClick={() => setShowAllTrending(!showAllTrending)}
                   >
                     {showAllTrending ? "Show Less" : "Show More"}
                   </Button>
