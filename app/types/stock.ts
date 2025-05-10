@@ -58,6 +58,15 @@ export interface TrendingAsset {
     sentiment: "positive" | "neutral" | "negative"
 }
 
+export type MarketNewsItem = {
+    id: string
+    headline: string
+    source: string
+    summary: string
+    datetime: number
+    url: string
+  }
+
 // News related interfaces
 export interface NewsItem {
     id: string | number

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { Tabs, TabsContent } from "@/components/ui/tabs"
 import DashboardHeader from "@/components/common/dashboard-header"
 import {

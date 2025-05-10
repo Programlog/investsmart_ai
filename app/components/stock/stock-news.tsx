@@ -3,9 +3,8 @@
 import { useState, useEffect, useMemo } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Clock, ArrowDown, ArrowUp, ArrowUpRight } from "lucide-react"
+import { ArrowDown, ArrowUp } from "lucide-react"
 import { Skeleton } from "@/components/ui/skeleton"
-import Image from "next/image"
 import type { NewsItem } from "@/types/stock"
 import { NewsItemCard } from "@/components/stock/NewsItemCard"
 
