@@ -106,6 +106,13 @@ export interface CompanyProfile {
     weburl: string
 }
 
+export interface StockSearchResult {
+    symbol: string
+    name: string
+    type: string
+    displaySymbol: string
+}
+
 // Stock rating payload
 export interface StockRatingRequest {
     symbol: string
