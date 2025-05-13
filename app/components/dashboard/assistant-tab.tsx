@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-import { Send, RefreshCw, Sparkles, AlertCircle, Bot } from "lucide-react"
+import { Send, RefreshCw, Sparkles, AlertCircle, Bot, Loader2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { getInvestmentProfile } from "@/actions/getInvestmentProfile"
 import { InvestmentProfile } from "@/types/stock"
@@ -259,7 +259,14 @@ export default function AssistantTab() {
                         "bg-muted": message.role === "assistant",
                       })}
                     >
-                      {message.content}
+                      {message.role === "assistant" && message.content === "" ? (
+                        <div className="flex items-center gap-2 py-1">
+                          <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                          <span className="text-muted-foreground">Thinking...</span>
+                        </div>
+                      ) : (
+                        message.content
+                      )}
                     </div>
                     {message.role === "user" && (
                       <Avatar className="h-8 w-8">
