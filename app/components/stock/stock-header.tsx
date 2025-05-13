@@ -7,7 +7,7 @@ import { Star, ArrowUpRight, ArrowDownRight, Info } from "lucide-react"
 import { HoverCard, HoverCardTrigger, HoverCardContent } from "@/components/ui/hover-card"
 import { addToWatchlist, removeFromWatchlist, getWatchlist } from "@/actions/watchlist"
 import { Skeleton } from "@/components/ui/skeleton"
-import type { LatestBarData, CompanyProfile, NewsItem, StockMetrics, StockRating } from "@/types/stock"
+import type { LatestBarData, CompanyProfile, NewsItem, StockMetrics, StockRating, PriceChange } from "@/types/stock"
 
 const formatTimestamp = (isoTimestamp?: string | null) => {
     if (!isoTimestamp) return "N/A"
@@ -16,6 +16,26 @@ const formatTimestamp = (isoTimestamp?: string | null) => {
         minute: "2-digit",
         timeZoneName: "short"
     })
+}
+
+// Format large numbers with commas
+const formatNumber = (num: number): string => {
+    return new Intl.NumberFormat('en-US', { 
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2 
+    }).format(num);
+}
+
+// Format percent change with sign and percentage symbol
+const formatPercentChange = (percent: number): string => {
+    const sign = percent > 0 ? '+' : '';
+    return `${sign}${percent.toFixed(2)}%`;
+}
+
+const getDateDaysAgo = (daysAgo: number): string => {
+    const date = new Date();
+    date.setDate(date.getDate() - daysAgo);
+    return date.toISOString().split('T')[0];
 }
 
 // Skeleton component for the stock header
@@ -54,6 +74,7 @@ const StockHeaderSkeleton = () => (
 
 export default function StockHeader({ symbol }: { symbol: string }) {
     const [latestBarData, setLatestBarData] = useState<LatestBarData | null>(null)
+    const [priceChange, setPriceChange] = useState<PriceChange | null>(null)
     const [profile, setProfile] = useState<CompanyProfile | null>(null)
     const [news, setNews] = useState<NewsItem[]>([])
     const [metrics, setMetrics] = useState<StockMetrics | null>(null)
@@ -63,7 +84,7 @@ export default function StockHeader({ symbol }: { symbol: string }) {
     const [isFollowing, setIsFollowing] = useState(false)
     const [isTogglingFollow, setIsTogglingFollow] = useState(false)
     const [loading, setLoading] = useState(true)
-    const isPositiveChange = latestBarData?.close ? latestBarData.close > 0 : false
+    const isPositiveChange = priceChange ? priceChange.absoluteChange >= 0 : false
 
     useEffect(() => {
         const fetchData = async () => {
@@ -71,7 +92,7 @@ export default function StockHeader({ symbol }: { symbol: string }) {
                 setLoading(true)
                 const [profileRes, barRes, newsRes, metricsRes] = await Promise.all([
                     fetch(`/api/market/stock/header?symbol=${symbol}`),
-                    fetch(`/api/market/stock?symbol=${symbol}&type=latestBar`),
+                    fetch(`/api/market/stock?symbol=${symbol}&type=latestBar&start=${getDateDaysAgo(4)}`),
                     fetch(`/api/market/stock/news?symbol=${symbol}`),
                     fetch(`/api/market/stock/stats?symbol=${encodeURIComponent(symbol)}`)
                 ])
@@ -87,6 +108,7 @@ export default function StockHeader({ symbol }: { symbol: string }) {
 
                 setProfile(profileData.profile)
                 setLatestBarData(barData.latestBar)
+                setPriceChange(barData.priceChange)
                 setNews(newsData.news || [])
                 setMetrics(metricsData.metrics)
                 setError(null)
@@ -209,19 +231,24 @@ export default function StockHeader({ symbol }: { symbol: string }) {
                 <div>
                     <div className="flex items-baseline">
                         <span className="text-4xl font-bold">
-                            {error ? "Error" : latestBarData?.close?.toFixed(2) ?? "N/A"}
+                            {error ? "Error" : latestBarData?.close ? formatNumber(latestBarData.close) : "N/A"}
                         </span>
-                        {!error && latestBarData?.close && (
-                            <div className={`ml-3 flex items-center text-lg ${isPositiveChange ? "text-green-600" : "text-red-600"}`}>
+                        {!error && priceChange && (
+                            <div className={`ml-3 flex items-center ${isPositiveChange ? "text-green-600" : "text-red-600"}`}>
                                 {isPositiveChange ? (
                                     <ArrowUpRight className="h-5 w-5 mr-1" />
                                 ) : (
                                     <ArrowDownRight className="h-5 w-5 mr-1" />
                                 )}
-                                <span className="font-medium">
-                                    {isPositiveChange ? "+" : "-"}
-                                    {Math.abs(latestBarData.close).toFixed(2)}
-                                </span>
+                                <div className="flex flex-col">
+                                    <span className="text-sm font-medium">
+                                        {isPositiveChange ? "+" : ""}
+                                        {formatNumber(priceChange.absoluteChange)}
+                                    </span>
+                                    <span className="text-xs">
+                                        {formatPercentChange(priceChange.percentChange)}
+                                    </span>
+                                </div>
                             </div>
                         )}
                     </div>
