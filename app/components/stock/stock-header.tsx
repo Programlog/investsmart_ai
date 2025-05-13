@@ -92,7 +92,7 @@ export default function StockHeader({ symbol }: { symbol: string }) {
                 setLoading(true)
                 const [profileRes, barRes, newsRes, metricsRes] = await Promise.all([
                     fetch(`/api/market/stock/header?symbol=${symbol}`),
-                    fetch(`/api/market/stock?symbol=${symbol}&type=latestBar&start=${getDateDaysAgo(4)}`),
+                    fetch(`/api/market/stock?symbol=${symbol}&type=latestBar&start=${getDateDaysAgo(5)}`),
                     fetch(`/api/market/stock/news?symbol=${symbol}`),
                     fetch(`/api/market/stock/stats?symbol=${encodeURIComponent(symbol)}`)
                 ])
