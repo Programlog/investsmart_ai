@@ -4,6 +4,7 @@ import "@/components/ui/globals.css";
 import { ClerkProvider } from "@clerk/nextjs";
 import StoreProvider from "@/lib/store/StoreProvider";
 import { Analytics } from "@vercel/analytics/react"
+import { SpeedInsights } from "@vercel/speed-insights/next"
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -27,6 +28,7 @@ export default function RootLayout({
           <body className={`${inter.className} antialiased`}>
             {children}
             <Analytics />
+            <SpeedInsights />
           </body>
         </html>
       </StoreProvider>

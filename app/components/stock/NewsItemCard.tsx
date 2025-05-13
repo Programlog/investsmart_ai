@@ -7,7 +7,7 @@ export const NewsItemCard = ({ item }: { item: NewsItem }) => (
         <div className="flex gap-4">
             <div className="relative flex-shrink-0 w-20 h-20">
                 <Image
-                    src={item.image || "/placeholder.jpg"}
+                    src={item.image || "/placeholder.svg"}
                     alt={item.title}
                     fill
                     className="object-cover rounded-md"

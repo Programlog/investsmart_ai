@@ -20,6 +20,10 @@ export interface StockStatsProps {
     symbol: string
 }
 
+export interface PriceChange {
+    absoluteChange: number
+    percentChange: number
+}
 
 // Chart related interfaces
 export type ChartPeriod = "1D" | "5D" | "1M" | "6M" | "YTD" | "1Y" | "5Y" | "All"
