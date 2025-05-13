@@ -9,12 +9,13 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Send, RefreshCw, Sparkles, AlertCircle } from "lucide-react"
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { Send, RefreshCw, Sparkles, AlertCircle, Bot } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { getInvestmentProfile } from "@/actions/getInvestmentProfile"
 import { InvestmentProfile } from "@/types/stock"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import { useUser } from "@clerk/nextjs"
 
 export default function AssistantTab() {
   const dispatch = useDispatch()
@@ -25,6 +26,7 @@ export default function AssistantTab() {
   const [error, setError] = useState<Error | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const promptInputRef = useRef<HTMLInputElement>(null)
+  const { user } = useUser()
 
   // Investment profile state
   const [investmentProfile, setInvestmentProfile] = useState<InvestmentProfile | null>(null)
@@ -204,6 +206,24 @@ export default function AssistantTab() {
     </div>
   )
 
+  const getUserInitials = () => {
+    if (!user) return "U"
+    
+    const firstName = user.firstName || ""
+    const lastName = user.lastName || ""
+    
+    const firstInitial = firstName.charAt(0)
+    const lastInitial = lastName.charAt(0)
+    
+    if (firstInitial && lastInitial) {
+      return `${firstInitial}${lastInitial}`
+    } else if (firstInitial) {
+      return firstInitial
+    } else {
+      return "U"
+    }
+  }
+
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
       <div className="md:col-span-2">
@@ -228,8 +248,9 @@ export default function AssistantTab() {
                   >
                     {message.role === "assistant" && (
                       <Avatar className="h-8 w-8">
-                        <AvatarImage src="/placeholder.svg?height=32&width=32" alt="AI Assistant" />
-                        <AvatarFallback>AI</AvatarFallback>
+                        <AvatarFallback className="bg-primary/10">
+                          <Bot className="h-4 w-4 text-primary" />
+                        </AvatarFallback>
                       </Avatar>
                     )}
                     <div
@@ -242,8 +263,9 @@ export default function AssistantTab() {
                     </div>
                     {message.role === "user" && (
                       <Avatar className="h-8 w-8">
-                        <AvatarImage src="/placeholder.svg?height=32&width=32" alt="User" />
-                        <AvatarFallback>JD</AvatarFallback>
+                        <AvatarFallback className="bg-primary text-primary-foreground text-xs font-medium">
+                          {getUserInitials()}
+                        </AvatarFallback>
                       </Avatar>
                     )}
                   </div>
