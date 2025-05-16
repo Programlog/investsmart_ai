@@ -1,8 +1,0 @@
-onlyBuiltDependencies:
-  - '@clerk/shared'
-  - '@prisma/client'
-  - '@prisma/engines'
-  - esbuild
-  - ngrok
-  - prisma
-  - sharp

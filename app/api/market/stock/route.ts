@@ -30,12 +30,13 @@ interface ChartDataPoint {
 /**
  * Computes the price change between the previous trading day's close and the latest price
  * @param bars Array of price bars sorted from oldest to newest
- * @returns Object with absoluteChange and percentChange values, or error
+ * @returns Object with absoluteChange and percentChange values
+ * @throws Error if there is insufficient data for calculation
  */
-function computePriceChange(bars: AlpacaBar[]): PriceChange | { error: string } {
+function computePriceChange(bars: AlpacaBar[]): PriceChange {
     // Need at least 2 bars from different days
     if (bars.length < 2) {
-        return { error: "Insufficient data for price change calculation" };
+        throw new Error("Insufficient data for price change calculation");
     }
 
     // Get the latest bar (last in the array)
@@ -64,7 +65,7 @@ function computePriceChange(bars: AlpacaBar[]): PriceChange | { error: string } 
     
     // If we couldn't find a previous day's close
     if (previousClose === null) {
-        return { error: "Previous day's close not found" };
+        throw new Error("Previous day's close not found");
     }
     
     // Compute changes
@@ -167,12 +168,22 @@ export async function GET(req: NextRequest) {
             
             try {
                 const data = await fetchHistoricalBars(symbol, params)
-                const priceChange = computePriceChange(data.bars)
-                
-                return NextResponse.json({ 
-                    latestBar,
-                    priceChange: priceChange
-                })
+                try {
+                    const priceChange = computePriceChange(data.bars)
+                    return NextResponse.json({ 
+                        latestBar,
+                        priceChange
+                    })
+                } catch (priceChangeError: unknown) {
+                    const errorMessage = priceChangeError instanceof Error 
+                        ? priceChangeError.message 
+                        : 'Unknown error calculating price change';
+                    console.warn(`Could not compute price change for ${symbol}: ${errorMessage}`)
+                    return NextResponse.json({ 
+                        latestBar,
+                        priceChange: null
+                    })
+                }
             } catch (historyError) {
                 return NextResponse.json({ latestBar })
             }
@@ -195,11 +206,19 @@ export async function GET(req: NextRequest) {
             volume: bar.v,
         }))
         
-        const priceChange = computePriceChange(data.bars)
+        let priceChange: PriceChange | null = null
+        try {
+            priceChange = computePriceChange(data.bars)
+        } catch (error: unknown) {
+            const errorMessage = error instanceof Error 
+                ? error.message 
+                : 'Unknown error calculating price change';
+            console.warn(`Could not compute price change for ${symbol}: ${errorMessage}`)
+        }
 
         return NextResponse.json({ 
             chartData,
-            priceChange: priceChange
+            priceChange
         })
     } catch (error: unknown) {
         const message = error instanceof Error ? error.message : "Internal server error"
