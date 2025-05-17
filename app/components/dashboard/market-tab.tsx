@@ -88,7 +88,6 @@ const DEFAULT_INDICES: MarketIndex[] = [
 ]
 
 export default function MarketTab() {
-  const [isInitialLoading, setIsInitialLoading] = useState(true)
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [marketIndices, setMarketIndices] = useState<MarketIndex[]>(DEFAULT_INDICES)
   const [selectedIndex, setSelectedIndex] = useState<string>(
@@ -152,17 +151,10 @@ export default function MarketTab() {
     }
   }, [selectedIndex])
 
-  // Track initial loading state
-  useEffect(() => {
-    if (!indexQuotesLoading && !trendingAssetsLoading && !newsLoading && !marketStatusLoading) {
-      setIsInitialLoading(false)
-    }
-  }, [indexQuotesLoading, trendingAssetsLoading, newsLoading, marketStatusLoading])
-
   // Generate market commentary when data is available
   useEffect(() => {
     const generateCommentary = async () => {
-      if (isInitialLoading || trendingAssetsLoading || !trendingAssets?.length) {
+      if (indexQuotesLoading || newsLoading || marketStatusLoading || trendingAssetsLoading || !trendingAssets || trendingAssets.length === 0) {
         return
       }
 
@@ -170,7 +162,7 @@ export default function MarketTab() {
       setCommentaryError(null)
       
       try {
-        const commentaryAssets = trendingAssets.map((asset: TrendingAsset) => ({
+        const commentaryAssets: TrendingAsset[] = (trendingAssets || []).map((asset: TrendingAsset) => ({
           ...asset,
           price: asset.price ?? 0,
           change: asset.change ?? 0,
@@ -195,7 +187,7 @@ export default function MarketTab() {
     }
 
     generateCommentary()
-  }, [marketIndices, trendingAssets, isInitialLoading, trendingAssetsLoading])
+  }, [marketIndices, trendingAssets, indexQuotesLoading, trendingAssetsLoading, newsLoading, marketStatusLoading, setMarketCommentary, setIsCommentaryLoading, setCommentaryError])
 
   // Handle refresh button click
   const handleRefresh = () => {
@@ -215,6 +207,9 @@ export default function MarketTab() {
     }, 800)
   }
 
+  // Calculate initial loading state directly from SWR loading flags
+  const isActuallyInitialLoading = indexQuotesLoading || trendingAssetsLoading || newsLoading || marketStatusLoading;
+
   // Memoized values
   const displayedTrendingAssets = useMemo(() => {
     if (!trendingAssets) return []
@@ -227,7 +222,7 @@ export default function MarketTab() {
   )
 
   // Render loading skeleton
-  if (isInitialLoading) {
+  if (isActuallyInitialLoading) {
     return (
       <div className="space-y-6 animate-pulse">
         <div className="flex justify-between items-center">
