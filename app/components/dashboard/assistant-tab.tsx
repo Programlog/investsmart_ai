@@ -34,17 +34,16 @@ export default function AssistantTab() {
   const [profileError, setProfileError] = useState<string | null>(null)
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
+    if (messages.length > 0) {
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
+    }
   }, [messages])
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      promptInputRef.current?.focus()
-    }, 50)
-    return () => clearTimeout(timer)
+    promptInputRef.current?.focus()
   }, [])
 
-  // Fetch investment profile on component mount
+  // Fetch investment profile only once on mount
   useEffect(() => {
     fetchInvestmentProfile()
   }, [])
