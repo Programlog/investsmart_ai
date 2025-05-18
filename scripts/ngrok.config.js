@@ -1,10 +1,5 @@
 import ngrok from 'ngrok';
 import dotenv from 'dotenv';
-import { fileURLToPath } from 'url';
-import { dirname } from 'path';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
 
 dotenv.config();
 
@@ -12,7 +7,7 @@ async function startNgrokTunnel() {
     try {
         const url = await ngrok.connect({
             addr: 3000,
-            authtoken: process.env.NGROK_AUTH_TOKEN || '',
+            authtoken: process.env.NGROK_AUTH_TOKEN,
             region: 'us',
             hostname: 'subtle-bluebird-probable.ngrok-free.app'
         });
