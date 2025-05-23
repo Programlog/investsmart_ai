@@ -1,6 +1,13 @@
 // Learn more: https://github.com/testing-library/jest-dom
 import '@testing-library/jest-dom';
+import 'whatwg-fetch';
 import React from 'react';
+// We might not need NextResponse here if not used elsewhere in setup
+
+// Polyfill for TextEncoder and TextDecoder
+import { TextEncoder, TextDecoder } from 'util';
+global.TextEncoder = TextEncoder;
+global.TextDecoder = TextDecoder as any; // Node.js TextDecoder is slightly different
 
 // Mock for Next.js router
 jest.mock('next/navigation', () => ({
@@ -20,7 +27,6 @@ jest.mock('next/navigation', () => ({
 jest.mock('next/image', () => ({
   __esModule: true,
   default: (props: any) => {
-    // eslint-disable-next-line jsx-a11y/alt-text, @next/next/no-img-element
     return React.createElement('img', props);
   },
 }));
