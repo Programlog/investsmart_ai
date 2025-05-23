@@ -16,6 +16,7 @@ import { getInvestmentProfile } from "@/actions/getInvestmentProfile"
 import { InvestmentProfile } from "@/types/stock"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { useUser } from "@clerk/nextjs"
+import ReactMarkdown from "react-markdown"
 
 export default function AssistantTab() {
   const dispatch = useDispatch()
@@ -262,6 +263,10 @@ export default function AssistantTab() {
                         <div className="flex items-center gap-2 py-1">
                           <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
                           <span className="text-muted-foreground">Thinking...</span>
+                        </div>
+                      ) : message.role === "assistant" ? (
+                        <div className="prose prose-sm max-w-none">
+                          <ReactMarkdown>{message.content}</ReactMarkdown>
                         </div>
                       ) : (
                         message.content
