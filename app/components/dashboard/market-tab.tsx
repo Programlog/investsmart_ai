@@ -88,7 +88,6 @@ const DEFAULT_INDICES: MarketIndex[] = [
 ]
 
 export default function MarketTab() {
-  const [isInitialLoading, setIsInitialLoading] = useState(true)
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [marketIndices, setMarketIndices] = useState<MarketIndex[]>(DEFAULT_INDICES)
   const [selectedIndex, setSelectedIndex] = useState<string>(
@@ -105,40 +104,40 @@ export default function MarketTab() {
     fetcher,
     { revalidateOnFocus: false }
   )
-  
+
   // Fetch latest prices for trending assets (only when trendingAssets is available)
   const trendingSymbols = useMemo(() => trendingAssets?.map((a: TrendingAsset) => a.symbol).join(","), [trendingAssets])
-  
+
   const { data: trendingBars, isLoading: trendingBarsLoading, error: trendingBarsError } = useSWR(
     trendingSymbols ? `/api/market/multi-stock?symbols=${trendingSymbols}` : null,
     fetcher,
     { revalidateOnFocus: false }
   )
-  
+
   const { data: marketNews, isLoading: newsLoading, error: newsError } = useSWR(
     "/api/market/news",
     fetcher,
     { revalidateOnFocus: false }
   )
-  
+
   const { data: marketStatus, isLoading: marketStatusLoading, error: marketStatusError } = useSWR(
     "/api/market/status",
     fetcher,
     { revalidateOnFocus: false }
   )
-  
+
   const { data: indexQuotes, isLoading: indexQuotesLoading, error: indexQuotesError } = useSWR(
     "/api/market/index-quote",
     fetcher,
     { revalidateOnFocus: false }
   )
-  
+
   // Chart data depends on selectedIndex (memoized)
-  const chartSymbol = useMemo(() => 
-    SYMBOL_MAP_ALPHA_VANTAGE[selectedIndex as keyof typeof SYMBOL_MAP_ALPHA_VANTAGE] || "SPY", 
+  const chartSymbol = useMemo(() =>
+    SYMBOL_MAP_ALPHA_VANTAGE[selectedIndex as keyof typeof SYMBOL_MAP_ALPHA_VANTAGE] || "SPY",
     [selectedIndex]
   )
-  
+
   const { data: lineChartData, isLoading: lineChartLoading, error: lineChartError } = useSWR(
     `/api/market/daily?symbol=${chartSymbol}`,
     fetcher,
@@ -152,25 +151,20 @@ export default function MarketTab() {
     }
   }, [selectedIndex])
 
-  // Track initial loading state
-  useEffect(() => {
-    if (!indexQuotesLoading && !trendingAssetsLoading && !newsLoading && !marketStatusLoading) {
-      setIsInitialLoading(false)
-    }
-  }, [indexQuotesLoading, trendingAssetsLoading, newsLoading, marketStatusLoading])
+  // Memoized: ready to generate commentary
+  const isReadyForCommentary = useMemo(() => {
+    return !indexQuotesLoading && !newsLoading && !marketStatusLoading && !trendingAssetsLoading && trendingAssets && trendingAssets.length > 0;
+  }, [indexQuotesLoading, newsLoading, marketStatusLoading, trendingAssetsLoading, trendingAssets]);
 
   // Generate market commentary when data is available
   useEffect(() => {
-    const generateCommentary = async () => {
-      if (isInitialLoading || trendingAssetsLoading || !trendingAssets?.length) {
-        return
-      }
+    if (!isReadyForCommentary) return;
 
+    const generateCommentary = async () => {
       setIsCommentaryLoading(true)
       setCommentaryError(null)
-      
       try {
-        const commentaryAssets = trendingAssets.map((asset: TrendingAsset) => ({
+        const commentaryAssets: TrendingAsset[] = (trendingAssets || []).map((asset: TrendingAsset) => ({
           ...asset,
           price: asset.price ?? 0,
           change: asset.change ?? 0,
@@ -178,12 +172,10 @@ export default function MarketTab() {
           volume: asset.volume ?? "N/A",
           sentiment: asset.sentiment ?? "neutral",
         }))
-
         const commentary = await getCachedMarketCommentary({
           indices: marketIndices,
           trendingAssets: commentaryAssets,
         })
-        
         setMarketCommentary(commentary)
       } catch (error) {
         console.error("Error generating market commentary:", error)
@@ -195,7 +187,7 @@ export default function MarketTab() {
     }
 
     generateCommentary()
-  }, [marketIndices, trendingAssets, isInitialLoading, trendingAssetsLoading])
+  }, [isReadyForCommentary, marketIndices, trendingAssets])
 
   // Handle refresh button click
   const handleRefresh = () => {
@@ -215,6 +207,9 @@ export default function MarketTab() {
     }, 800)
   }
 
+  // Calculate initial loading state directly from SWR loading flags
+  const isActuallyInitialLoading = indexQuotesLoading || trendingAssetsLoading || newsLoading || marketStatusLoading;
+
   // Memoized values
   const displayedTrendingAssets = useMemo(() => {
     if (!trendingAssets) return []
@@ -227,7 +222,7 @@ export default function MarketTab() {
   )
 
   // Render loading skeleton
-  if (isInitialLoading) {
+  if (isActuallyInitialLoading) {
     return (
       <div className="space-y-6 animate-pulse">
         <div className="flex justify-between items-center">

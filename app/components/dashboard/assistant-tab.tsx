@@ -16,6 +16,7 @@ import { getInvestmentProfile } from "@/actions/getInvestmentProfile"
 import { InvestmentProfile } from "@/types/stock"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { useUser } from "@clerk/nextjs"
+import ReactMarkdown from "react-markdown"
 
 export default function AssistantTab() {
   const dispatch = useDispatch()
@@ -34,17 +35,16 @@ export default function AssistantTab() {
   const [profileError, setProfileError] = useState<string | null>(null)
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
+    if (messages.length > 0) {
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
+    }
   }, [messages])
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      promptInputRef.current?.focus()
-    }, 50)
-    return () => clearTimeout(timer)
+    promptInputRef.current?.focus()
   }, [])
 
-  // Fetch investment profile on component mount
+  // Fetch investment profile only once on mount
   useEffect(() => {
     fetchInvestmentProfile()
   }, [])
@@ -263,6 +263,10 @@ export default function AssistantTab() {
                         <div className="flex items-center gap-2 py-1">
                           <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
                           <span className="text-muted-foreground">Thinking...</span>
+                        </div>
+                      ) : message.role === "assistant" ? (
+                        <div className="prose prose-sm max-w-none">
+                          <ReactMarkdown>{message.content}</ReactMarkdown>
                         </div>
                       ) : (
                         message.content

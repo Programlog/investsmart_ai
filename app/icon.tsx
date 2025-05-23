@@ -12,7 +12,7 @@ export default function Icon({ id }: { id: string }) {
       <div
         style={{
           fontSize: 24,
-          background: '#29AE78', // Using the brand green from the gradient
+          background: '#000000', // Changed to black from green
           width: '100%',
           height: '100%',
           display: 'flex',
