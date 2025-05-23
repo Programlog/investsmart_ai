@@ -104,40 +104,40 @@ export default function MarketTab() {
     fetcher,
     { revalidateOnFocus: false }
   )
-  
+
   // Fetch latest prices for trending assets (only when trendingAssets is available)
   const trendingSymbols = useMemo(() => trendingAssets?.map((a: TrendingAsset) => a.symbol).join(","), [trendingAssets])
-  
+
   const { data: trendingBars, isLoading: trendingBarsLoading, error: trendingBarsError } = useSWR(
     trendingSymbols ? `/api/market/multi-stock?symbols=${trendingSymbols}` : null,
     fetcher,
     { revalidateOnFocus: false }
   )
-  
+
   const { data: marketNews, isLoading: newsLoading, error: newsError } = useSWR(
     "/api/market/news",
     fetcher,
     { revalidateOnFocus: false }
   )
-  
+
   const { data: marketStatus, isLoading: marketStatusLoading, error: marketStatusError } = useSWR(
     "/api/market/status",
     fetcher,
     { revalidateOnFocus: false }
   )
-  
+
   const { data: indexQuotes, isLoading: indexQuotesLoading, error: indexQuotesError } = useSWR(
     "/api/market/index-quote",
     fetcher,
     { revalidateOnFocus: false }
   )
-  
+
   // Chart data depends on selectedIndex (memoized)
-  const chartSymbol = useMemo(() => 
-    SYMBOL_MAP_ALPHA_VANTAGE[selectedIndex as keyof typeof SYMBOL_MAP_ALPHA_VANTAGE] || "SPY", 
+  const chartSymbol = useMemo(() =>
+    SYMBOL_MAP_ALPHA_VANTAGE[selectedIndex as keyof typeof SYMBOL_MAP_ALPHA_VANTAGE] || "SPY",
     [selectedIndex]
   )
-  
+
   const { data: lineChartData, isLoading: lineChartLoading, error: lineChartError } = useSWR(
     `/api/market/daily?symbol=${chartSymbol}`,
     fetcher,
@@ -151,16 +151,18 @@ export default function MarketTab() {
     }
   }, [selectedIndex])
 
+  // Memoized: ready to generate commentary
+  const isReadyForCommentary = useMemo(() => {
+    return !indexQuotesLoading && !newsLoading && !marketStatusLoading && !trendingAssetsLoading && trendingAssets && trendingAssets.length > 0;
+  }, [indexQuotesLoading, newsLoading, marketStatusLoading, trendingAssetsLoading, trendingAssets]);
+
   // Generate market commentary when data is available
   useEffect(() => {
-    const generateCommentary = async () => {
-      if (indexQuotesLoading || newsLoading || marketStatusLoading || trendingAssetsLoading || !trendingAssets || trendingAssets.length === 0) {
-        return
-      }
+    if (!isReadyForCommentary) return;
 
+    const generateCommentary = async () => {
       setIsCommentaryLoading(true)
       setCommentaryError(null)
-      
       try {
         const commentaryAssets: TrendingAsset[] = (trendingAssets || []).map((asset: TrendingAsset) => ({
           ...asset,
@@ -170,12 +172,10 @@ export default function MarketTab() {
           volume: asset.volume ?? "N/A",
           sentiment: asset.sentiment ?? "neutral",
         }))
-
         const commentary = await getCachedMarketCommentary({
           indices: marketIndices,
           trendingAssets: commentaryAssets,
         })
-        
         setMarketCommentary(commentary)
       } catch (error) {
         console.error("Error generating market commentary:", error)
@@ -187,7 +187,7 @@ export default function MarketTab() {
     }
 
     generateCommentary()
-  }, [marketIndices, trendingAssets, indexQuotesLoading, trendingAssetsLoading, newsLoading, marketStatusLoading, setMarketCommentary, setIsCommentaryLoading, setCommentaryError])
+  }, [isReadyForCommentary, marketIndices, trendingAssets])
 
   // Handle refresh button click
   const handleRefresh = () => {
