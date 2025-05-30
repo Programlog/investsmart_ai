@@ -1,6 +1,8 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { usePathname, useRouter } from "next/navigation"
+import Link from "next/link"
 import { BarChart3, Search, LineChart, BookOpen, MessageSquare, BookMarked, Newspaper, MenuIcon } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -15,56 +17,51 @@ type NavItem = {
 const navItems: NavItem[] = [
     {
         title: "Search",
-        href: "#",
+        href: "/dashboard/search",
         icon: Search,
         value: "search"
     },
     {
         title: "Portfolio",
-        href: "#",
+        href: "/dashboard/portfolio",
         icon: BarChart3,
         value: "portfolio"
     },
     {
         title: "Watchlist",
-        href: "#",
+        href: "/dashboard/watchlist",
         icon: BookMarked,
         value: "watchlist"
     },
     {
         title: "Market",
-        href: "#",
+        href: "/dashboard/market",
         icon: LineChart,
         value: "market"
     },
     {
         title: "Assistant",
-        href: "#",
+        href: "/dashboard/assistant",
         icon: MessageSquare,
         value: "assistant"
     },
     {
         title: "Learning",
-        href: "#",
+        href: "/dashboard/learning",
         icon: BookOpen,
         value: "learning"
     },
     {
         title: "News",
-        href: "#",
+        href: "/dashboard/news",
         icon: Newspaper,
         value: "news"
     },
 ]
 
-interface DashboardSidebarNavProps {
-    defaultTab?: string
-    onTabChangeAction: (tab: string) => void
-}
-
-export function DashboardSidebarNav({ defaultTab = "portfolio", onTabChangeAction }: DashboardSidebarNavProps) {
+export function DashboardSidebarNav() {
     const [isExpanded, setIsExpanded] = useState(true)
-    const [activeTab, setActiveTab] = useState(defaultTab)
+    const pathname = usePathname()
 
     // Load saved state from localStorage
     useEffect(() => {
@@ -72,13 +69,7 @@ export function DashboardSidebarNav({ defaultTab = "portfolio", onTabChangeActio
         if (savedExpanded !== null) {
             setIsExpanded(savedExpanded === "true")
         }
-
-        const savedTab = localStorage.getItem("dashboard-active-tab")
-        if (savedTab) {
-            setActiveTab(savedTab)
-            onTabChangeAction(savedTab)
-        }
-    }, [onTabChangeAction])
+    }, [])
 
     // Save state to localStorage
     useEffect(() => {
@@ -87,12 +78,6 @@ export function DashboardSidebarNav({ defaultTab = "portfolio", onTabChangeActio
 
     const toggleSidebar = () => {
         setIsExpanded(!isExpanded)
-    }
-
-    const handleTabClick = (value: string) => {
-        setActiveTab(value)
-        onTabChangeAction(value)
-        localStorage.setItem("dashboard-active-tab", value)
     }
 
     return (
@@ -114,21 +99,26 @@ export function DashboardSidebarNav({ defaultTab = "portfolio", onTabChangeActio
                 </Button>
             </div>
             <nav className="flex-1 space-y-1 p-2">
-                {navItems.map((item) => (
-                    <Button
-                        key={item.value}
-                        variant="ghost"
-                        onClick={() => handleTabClick(item.value)}
-                        className={cn(
-                            "w-full justify-start gap-4 transition-all duration-200",
-                            activeTab === item.value ? "bg-accent text-accent-foreground" : "hover:bg-accent hover:text-accent-foreground",
-                            !isExpanded && "justify-center px-2"
-                        )}
-                    >
-                        <item.icon className="h-5 w-5 shrink-0" />
-                        {isExpanded && <span>{item.title}</span>}
-                    </Button>
-                ))}
+                {navItems.map((item) => {
+                    const isActive = pathname === item.href
+                    return (
+                        <Button
+                            key={item.value}
+                            variant="ghost"
+                            asChild
+                            className={cn(
+                                "w-full justify-start gap-4 transition-all duration-200",
+                                isActive ? "bg-accent text-accent-foreground" : "hover:bg-accent hover:text-accent-foreground",
+                                !isExpanded && "justify-center px-2"
+                            )}
+                        >
+                            <Link href={item.href}>
+                                <item.icon className="h-5 w-5 shrink-0" />
+                                {isExpanded && <span>{item.title}</span>}
+                            </Link>
+                        </Button>
+                    )
+                })}
             </nav>
         </div>
     )
