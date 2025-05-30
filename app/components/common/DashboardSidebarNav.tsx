@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { usePathname, useRouter } from "next/navigation"
+import { usePathname } from "next/navigation"
 import Link from "next/link"
 import { BarChart3, Search, LineChart, BookOpen, MessageSquare, BookMarked, Newspaper, MenuIcon, User } from "lucide-react"
 import { cn } from "@/lib/utils"
