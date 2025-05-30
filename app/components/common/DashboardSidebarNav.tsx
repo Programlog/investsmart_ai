@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import { usePathname, useRouter } from "next/navigation"
 import Link from "next/link"
-import { BarChart3, Search, LineChart, BookOpen, MessageSquare, BookMarked, Newspaper, MenuIcon } from "lucide-react"
+import { BarChart3, Search, LineChart, BookOpen, MessageSquare, BookMarked, Newspaper, MenuIcon, User } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 
@@ -56,6 +56,12 @@ const navItems: NavItem[] = [
         href: "/dashboard/news",
         icon: Newspaper,
         value: "news"
+    },
+    {
+        title: "Profile",
+        href: "/dashboard/profile",
+        icon: User,
+        value: "profile"
     },
 ]
 
