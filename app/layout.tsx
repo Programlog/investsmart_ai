@@ -5,6 +5,7 @@ import { ClerkProvider } from "@clerk/nextjs";
 import StoreProvider from "@/lib/store/StoreProvider";
 import { Analytics } from "@vercel/analytics/react"
 import { SpeedInsights } from "@vercel/speed-insights/next"
+import { ThemeProvider } from "@/hooks/use-theme";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -26,7 +27,12 @@ export default function RootLayout({
             <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
           </head>
           <body className={`${inter.className} antialiased`}>
-            {children}
+            <ThemeProvider
+              defaultTheme="system"
+              storageKey="ui-theme"
+            >
+              {children}
+            </ThemeProvider>
             <Analytics />
             <SpeedInsights />
           </body>
