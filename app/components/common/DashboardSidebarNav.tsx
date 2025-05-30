@@ -106,7 +106,7 @@ export function DashboardSidebarNav() {
             </div>
             <nav className="flex-1 space-y-1 p-2">
                 {navItems.map((item) => {
-                    const isActive = pathname === item.href
+                    const isActive = pathname.startsWith(item.href)
                     return (
                         <Button
                             key={item.value}
