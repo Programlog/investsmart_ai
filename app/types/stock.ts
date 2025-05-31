@@ -20,6 +20,10 @@ export interface StockStatsProps {
     symbol: string
 }
 
+export interface PriceChange {
+    absoluteChange: number
+    percentChange: number
+}
 
 // Chart related interfaces
 export type ChartPeriod = "1D" | "5D" | "1M" | "6M" | "YTD" | "1Y" | "5Y" | "All"
@@ -58,6 +62,15 @@ export interface TrendingAsset {
     sentiment: "positive" | "neutral" | "negative"
 }
 
+export type MarketNewsItem = {
+    id: string
+    headline: string
+    source: string
+    summary: string
+    datetime: number
+    url: string
+  }
+
 // News related interfaces
 export interface NewsItem {
     id: string | number
@@ -95,6 +108,13 @@ export interface CompanyProfile {
     name: string
     ticker: string
     weburl: string
+}
+
+export interface StockSearchResult {
+    symbol: string
+    name: string
+    type: string
+    displaySymbol: string
 }
 
 // Stock rating payload

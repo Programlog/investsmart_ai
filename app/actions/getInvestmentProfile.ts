@@ -45,7 +45,7 @@ export async function getInvestmentProfile(): Promise<{
         // Convert to format expected by generateInvestmentProfile
         const answersRecord: Record<string, string> = {};
         responses.forEach((response) => {
-            let key = response.questionId;
+            const key = response.questionId;
             answersRecord[key] = response.answer;
         });
 

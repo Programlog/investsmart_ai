@@ -9,6 +9,8 @@ const DOMAIN_CATEGORIES: Record<string, ResultCategory> = {
     "x.com": "social",
     "investing.com": "news",
     "bloomberg.com": "news",
+    "finance.yahoo.com": "news",
+    "investopedia.com": "news",
 };
 
 function categorizeUrl(url: string): ResultCategory {

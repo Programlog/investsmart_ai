@@ -29,3 +29,6 @@ app/node_modules
 
 # Cursor rules
 .cursor/rules/*
+
+# Jest
+coverage/
