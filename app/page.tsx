@@ -32,28 +32,46 @@ export default function Home() {
                 onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
                 className="p-2 text-black"
               >
-                <Menu size={24} />
+                {mobileMenuOpen ? (
+                  // X icon (close)
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M18 6L6 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                    <path d="M6 6l12 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                ) : (
+                  <Menu size={24} />
+                )}
               </button>
               {mobileMenuOpen && (
-                <div className="absolute top-20 right-6 bg-white shadow-lg rounded-lg p-4 z-50 flex flex-col gap-2 w-[200px]">
-                  <SignedOut>
-                    <Button asChild variant="ghost" className="justify-start">
-                      <Link href="/sign-in">Sign In</Link>
-                    </Button>
-                  </SignedOut>
-                  <SignedOut>
-                    <Button asChild variant="default" className="justify-start">
-                      <Link href="/sign-up">Get Started</Link>
-                    </Button>
-                  </SignedOut>
-                  <SignedIn>
-                    <Button asChild variant="outline" className="justify-start">
-                      <Link href="/dashboard">Dashboard</Link>
-                    </Button>
-                    <div className="py-2">
-                      <UserButton showName />
-                    </div>
-                  </SignedIn>
+                <div className="fixed inset-0 z-50 flex flex-col bg-white">
+                  {/* Header row */}
+                  <div className="flex items-center justify-between px-6 py-6 border-b bg-gradient-to-br from-[#51B6A2] via-[#29AE78] to-[#0C2E24]">
+                    <div className="text-2xl font-bold text-black">InvestSmart AI</div>
+                    <button
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="p-2 text-white"
+                      aria-label="Close menu"
+                    >
+                      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M18 6L6 18" stroke="black" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                        <path d="M6 6l12 12" stroke="black" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                    </button>
+                  </div>
+                  {/* Buttons */}
+                  <div className="flex-1 flex flex-col gap-2 px-6 py-10">
+                    <SignedOut>
+                      <Button asChild variant="ghost" className="w-full justify-start py-4 text-lg px-8">
+                        <Link href="/sign-in">Sign In</Link>
+                      </Button>
+                    </SignedOut>
+                    <hr className="border-t border-dashed border-gray-300 my-1" />
+                    <SignedOut>
+                      <Button asChild className={`w-full justify-start py-4 text-lg px-8${isMobile ? ' bg-white text-black border-0 shadow-none' : ''}`}>
+                        <Link href="/sign-up">Get Started</Link>
+                      </Button>
+                    </SignedOut>
+                  </div>
                 </div>
               )}
             </>
@@ -99,13 +117,13 @@ export default function Home() {
             </p>
             <div className="mt-8 flex gap-4">
               <SignedOut>
-                <Button asChild size="lg">
+                <Button asChild size={isMobile ? "default" : "lg"}>
                   <Link href="/questionnaire">
                     Start Your Journey <ArrowRight className="ml-2 h-4 w-4" />
                   </Link>
                 </Button>
               </SignedOut>
-              <Button variant="outline" size="lg" asChild>
+              <Button variant="outline" size={isMobile ? "default" : "lg"} asChild>
                 <Link href="/about">Learn More</Link>
               </Button>
             </div>
