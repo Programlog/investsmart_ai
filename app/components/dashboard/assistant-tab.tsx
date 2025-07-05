@@ -9,10 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { getInvestmentProfile } from "@/actions/getInvestmentProfile"
 import { InvestmentProfile } from "@/types/stock"
 import { useUser } from "@clerk/nextjs"
-import { AssistantChatMessages } from "../assistant/assistant-chat-messages"
-import { AssistantChatInput } from "../assistant/assistant-chat-input"
-import { AssistantQuickActions } from "../assistant/assistant-quick-actions"
-import { AssistantInvestmentProfile } from "../assistant/assistant-investment-profile"
+import { AssistantChatMessages, AssistantChatInput, AssistantQuickActions, AssistantInvestmentProfile } from "../assistant"
 
 export default function AssistantTab() {
   const dispatch = useDispatch()
