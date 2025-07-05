@@ -17,7 +17,7 @@ interface WatchlistTableRowProps {
 
 export function WatchlistTableRow({ stock, handleRemoveStock }: WatchlistTableRowProps) {
     return (
-        <tr key={stock.symbol} className="border-b">
+        <tr className="border-b">
             <td className="p-4 font-medium">
                 <Link href={`/stock/${stock.symbol}`} className="hover:underline">
                     {stock.symbol}

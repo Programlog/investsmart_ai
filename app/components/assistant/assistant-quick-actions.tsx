@@ -14,7 +14,7 @@ interface AssistantQuickActionsProps {
   isRegenerating: boolean
 }
 
-export function AssistantQuickActions({ 
+export default function AssistantQuickActions({ 
   onRegenerateProfile, 
   onSetInput, 
   isRegenerating 

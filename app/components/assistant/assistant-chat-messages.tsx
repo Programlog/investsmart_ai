@@ -12,7 +12,7 @@ interface AssistantChatMessagesProps {
   error?: Error | null
 }
 
-export function AssistantChatMessages({ messages, userInitials, error }: AssistantChatMessagesProps) {
+export default function AssistantChatMessages({ messages, userInitials, error }: AssistantChatMessagesProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {

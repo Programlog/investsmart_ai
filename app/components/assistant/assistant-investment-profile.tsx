@@ -13,7 +13,7 @@ interface AssistantInvestmentProfileProps {
   onRegenerateProfile: () => void
 }
 
-export function AssistantInvestmentProfile({
+export default function AssistantInvestmentProfile({
   investmentProfile,
   profileLoading,
   profileError,

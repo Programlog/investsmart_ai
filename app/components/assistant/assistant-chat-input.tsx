@@ -14,7 +14,7 @@ interface AssistantChatInputProps {
   isLoading: boolean
 }
 
-export function AssistantChatInput({ 
+export default function AssistantChatInput({ 
   input, 
   setInput, 
   onSendMessage, 
