@@ -13,7 +13,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
-import StockSearch from "./stock-search"
+import StockSearch from "../search/stock-search"
 
 export default function SearchTab() {
   const [searchQuery, setSearchQuery] = useState("")
